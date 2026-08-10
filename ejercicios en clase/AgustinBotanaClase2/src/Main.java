@@ -34,13 +34,13 @@ public class Main {
         double[] r = raices(1, -3, 2);
         System.out.println("Raices: " + r[0] + " y " + r[1]);
 
-        // Días del mes (recordá el bug: usa índice 0-11, no 1-12 salvo que lo corrijas)
-        System.out.println(diasMes(2)); // "marzo tiene: 31" con el bug actual
+        // Días del mes 
+        System.out.println(diasMes(2));
 
         // Año bisiesto
         System.out.println("2024 es bisiesto? " + anioBisiesto(2024));
         System.out.println("2023 es bisiesto? " + anioBisiesto(2023));
-        System.out.println("1900 es bisiesto? " + anioBisiesto(1900)); // con la versión simplificada da true, con la regla completa da false
+        System.out.println("1900 es bisiesto? " + anioBisiesto(1900));     
     }
 
 }
