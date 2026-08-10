@@ -15,4 +15,4 @@ Guillermo Sap - 1206958 - Tengo 20 años, soy de Entre Rios actualmente viviendo
 
 
 BITACORA
-10/08/26: Crear READme
+10/08/26: Crear READme y ejercicios clase 2
