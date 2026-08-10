@@ -8,5 +8,7 @@ Marcos Enevoldsen - 1221035 - Tengo 20 años, soy de Bariloche estudiando en UAD
 Santino Faccio - 1210889 - Tengo 19 años, soy de Pinamar. Soy Estudiante de UADE de la carrera Licenciatura en Sistemas. Busco desarrollarme profesionalmente como desarrollador backend y/o analista funcional. Me gusta mucho el futbol, soy socio del Club Atletico Independiente.
 Mi Stack tecnico : Python, Java, HTML, CSS, Javascript, Bootstrap, SQL.
 
+Bruno Domínguez -1213265 - tengo 21 años, soy de cañuelas y estudio la carrera de licenciatura de gestión de tecnología de la información, me gusta todo lo que tenga que ver con la creación de videojuegos y desarrollo de personajes. Se como usar html, css y python. 
+
 BITACORA
 10/08/26: Crear READme
