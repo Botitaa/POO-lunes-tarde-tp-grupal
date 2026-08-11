@@ -1,4 +1,4 @@
-public class MesDelAnio {
+public class BrunoDominguezClase2 {
     public static void main(String[] args) {
         int mes = 4;
         String nombre;
