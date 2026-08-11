@@ -1,9 +1,9 @@
 public class SantinoFaccioClase2 {
 
     public static void main(String[] args) {
-        Ejercicio1(3, 8, 11);
-        Ejercicio2(8);
-        Ejercicio3(5); // valores d ejemplo
+        System.out.println(Ejercicio1(3, 8, 11));
+        System.out.println(Ejercicio2(8));
+        System.out.println(Ejercicio3(5)); // valores d ejemplo
     }
 
     public static double[] Ejercicio1(int a, int b, int c) {
