@@ -17,6 +17,7 @@ Guillermo Sap - 1206958 - Tengo 20 años, soy de Entre Rios actualmente viviendo
 BITACORA
 10/08/26: Crear READme y ejercicios clase 2
 17/08/26: Realizamos ejercicios while, do-while.
+
 24/08/26 Ejercicios FOR, guia "integradora" de la clase 3. 
 Link act integradora: https://docs.google.com/document/d/1BUtzN5C75DizYcdylYRq7we3TPehEAka/editusp=sharing&ouid=113175906480970297826&rtpof=true&sd=true
 (EL EJERCICIO 4 SE ENCUENTRA DENTRO DEL REPOSITORIO!!!)
