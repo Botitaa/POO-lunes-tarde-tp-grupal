@@ -16,6 +16,7 @@ Guillermo Sap - 1206958 - Tengo 20 años, soy de Entre Rios actualmente viviendo
 
 BITACORA
 10/08/26: Crear READme y ejercicios clase 2
+
 17/08/26: Realizamos ejercicios while, do-while.
 
 24/08/26 Ejercicios FOR, guia "integradora" de la clase 3. 
