@@ -34,13 +34,14 @@ public class Main {
         double[] r = raices(1, -3, 2);
         System.out.println("Raices: " + r[0] + " y " + r[1]);
 
-        // Días del mes 
+        // Días del mes
         System.out.println(diasMes(2));
 
         // Año bisiesto
         System.out.println("2024 es bisiesto? " + anioBisiesto(2024));
         System.out.println("2023 es bisiesto? " + anioBisiesto(2023));
-        System.out.println("1900 es bisiesto? " + anioBisiesto(1900));     
+        System.out.println("1900 es bisiesto? " + anioBisiesto(1900));
     }
+
 
 }

@@ -1,0 +1,23 @@
+# Carpeta de compilación (IntelliJ IDEA / javac por defecto)
+out/
+**/out/
+
+# Compilados de Java
+*.class
+
+# Archivos de IntelliJ IDEA
+*.iml
+.idea/
+
+# Archivos de Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# Archivos de VS Code
+.vscode/
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
