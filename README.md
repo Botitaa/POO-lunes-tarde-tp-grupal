@@ -22,3 +22,5 @@ BITACORA
 24/08/26 Ejercicios FOR, guia "integradora" de la clase 3. 
 Link act integradora: https://docs.google.com/document/d/1BUtzN5C75DizYcdylYRq7we3TPehEAka/edit?usp=sharing&ouid=113175906480970297826&rtpof=true&sd=true
 (EL EJERCICIO 4 SE ENCUENTRA DENTRO DEL REPOSITORIO!!!)
+
+31/08/26: UML ACTIVIDAD: https://docs.google.com/document/d/1fWo51WRC3EV5iPvRL2eAhnqVIMV8ic8F/edit
