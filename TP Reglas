@@ -1,0 +1,206 @@
+## Resumen del juego
+
+Batalla Naval Táctica es un juego por turnos para dos jugadores en la misma computadora, que combina el tablero de la batalla naval clásica con mecánicas de World of Warships: movimiento, alcance, visión y niebla de guerra.
+
+Cada jugador controla una flota de 6 barcos de tres tipos (destructor, crucero y acorazado), con atributos distintos de vida, velocidad, rango, visión, daño y cadencia de fuego. Los barcos se mueven por un tablero de 10x10 con islas y rocas, y solo se puede atacar lo que la flota propia ve.
+
+**Objetivo:** gana el jugador que hunde los 6 barcos del rival.
+
+**Diferencia con la batalla naval clásica:** no se dispara a ciegas a casillas. Los barcos se mueven, se detectan y se atacan según distancia y línea de visión, así que la partida depende de la posición y de la combinación entre tipos de barco.
+
+## Tablero y mapa
+
+El tablero tiene 10x10 casillas dividido en tres zonas por filas. Los obstáculos solo pueden estar en la zona neutral.
+
+| Zona | Filas | Casillas | Uso |
+| --- | --- | --- | --- |
+| Despliegue J1 | 0 a 2 | 30 | J1 ubica sus barcos al inicio |
+| Neutral | 3 a 6 | 40 | Contiene los obstáculos; nadie despliega acá |
+| Despliegue J2 | 7 a 9 | 30 | J2 ubica sus barcos al inicio |
+
+Las zonas de despliegue solo importan al inicio. Después, cualquier barco puede moverse por todo el tablero.
+
+**Tipos de casilla:**
+
+| Casilla | Bloquea el paso | Bloquea la visión |
+| --- | --- | --- |
+| Agua | No | No |
+| Roca | Sí | No |
+| Isla | Sí | Sí |
+| Restos (barco hundido) | No | No |
+
+Los barcos no bloquean la visión ni los disparos, pero sí el paso.
+
+**Mapas:** cada mapa define su propia distribución de islas y rocas, siempre dentro de la zona neutral y en espejo (simetría punto a punto respecto del centro) para que ningún jugador arranque con ventaja. El tablero valida al construirse que no haya obstáculos fuera de las filas 3 a 6. El MVP tiene un solo mapa:
+
+```text
+     0 1 2 3 4 5 6 7 8 9
+  0  A A A A A A A A A A
+  1  A A A A A A A A A A
+  2  A A A A A A A A A A
+  3  ~ ~ I I ~ ~ ~ R ~ ~
+  4  ~ ~ I ~ ~ R ~ ~ ~ ~
+  5  ~ ~ ~ ~ R ~ ~ I ~ ~
+  6  ~ ~ R ~ ~ ~ I I ~ ~
+  7  B B B B B B B B B B
+  8  B B B B B B B B B B
+  9  B B B B B B B B B B
+
+  A = despliegue J1   B = despliegue J2   ~ = agua   I = isla   R = roca
+```
+
+## Tipos de barco
+
+Cada jugador tiene 1 acorazado, 2 cruceros y 3 destructores. Cada barco ocupa 1 casilla y tiene sus propios atributos:
+
+| Atributo | Destructor | Crucero | Acorazado |
+| --- | --- | --- | --- |
+| Cantidad por jugador | 3 | 2 | 1 |
+| Vida | 3 | 5 | 8 |
+| Velocidad (casillas por turno) | 3 | 2 | 1 |
+| Rango de disparo (casillas) | 2 | 4 | 6 |
+| Visión (casillas) | 2 | 3 | 5 |
+| Daño por disparo | 3 a distancia 1, 2 a distancia 2 | 2 | 4 |
+| Cooldown (turnos sin disparar tras un disparo) | 0 | 0 | 1 |
+
+Los valores son iniciales y se van a ajustar al testear el balance. Qué papel cumple cada barco:
+
+- **Destructor:** rápido y frágil. Hace el mayor daño por turno pero solo de muy cerca. Como ve poco, tiene que acercarse para encontrar al enemigo, y sirve de explorador para el resto de la flota.
+- **Crucero:** equilibrado en todo. Dispara todos los turnos a media distancia.
+- **Acorazado:** lento y resistente, ve y dispara desde lejos. Pega fuerte en cada disparo pero dispara un turno sí y uno no, así que su daño promedio es medio.
+
+## Flujo de la partida
+
+La partida alterna turnos entre J1 y J2 con una pantalla de blackout entre cada uno, para que ningún jugador vea la información del otro.
+
+**Inicio y despliegue**
+
+1. Se sortea quién es J1. J1 despliega y juega primero.
+2. J1 ubica sus 6 barcos en casillas libres de su zona (filas 0 a 2), sin repetir casilla.
+3. Blackout. J2 toca "Listo" para tomar el control.
+4. J2 ubica sus 6 barcos en su zona (filas 7 a 9).
+5. Blackout. J1 toca "Listo" y empieza el primer turno.
+
+**Cada turno**
+
+1. **Resumen del turno rival** (desde el segundo turno en adelante): se muestra qué hizo el rival (el detalle está en la sección de visión y niebla).
+2. **Actualización:** baja en 1 el cooldown de los barcos propios que lo tengan activo.
+3. **Acciones:** el jugador activa sus barcos de a uno, en el orden que quiera. Cada barco puede moverse y después disparar; las dos acciones son opcionales.
+4. **Terminar turno:** el jugador toca "Terminar turno". No está obligado a usar ningún barco.
+5. **Blackout:** la pantalla se oculta hasta que el otro jugador toca "Listo".
+
+**Fin de la partida:** apenas se hunde el último barco de un jugador, la partida termina y gana el otro, sin esperar al final del turno. No puede haber empate porque en cada momento actúa un solo jugador.
+
+## Movimiento, disparo y daño
+
+**Distancia.** Todas las distancias del juego (movimiento, rango y visión) se miden con la distancia de Chebyshev: la diagonal cuenta como 1 paso, igual que el rey en ajedrez.
+
+```latex
+d(a, b) = \max(|f_a - f_b|, |c_a - c_b|)
+```
+
+**Movimiento**
+
+- Un barco se mueve **paso a paso**. Cada paso lo lleva a una de las 8 casillas adyacentes.
+- La cantidad máxima de pasos por turno es su velocidad, y puede usar menos. Por ejemplo, un destructor puede hacer 1 paso a la izquierda y 2 hacia abajo.
+- Solo se puede entrar a casillas de agua o restos. No se puede entrar a rocas, islas ni casillas ocupadas por otro barco, sea propio o enemigo.
+- No se puede salir del tablero.
+- Si un barco ya disparó en este turno, no puede moverse.
+
+**Disparo**
+
+Un barco puede disparar una vez por turno a un barco enemigo si se cumplen todas estas condiciones:
+
+1. El objetivo es visible para el jugador (la visión es compartida, ver la sección siguiente).
+2. La distancia entre el tirador y el objetivo es menor o igual al rango del tirador.
+3. Hay línea de visión directa entre el tirador y el objetivo; es decir, no se puede disparar por encima de una isla.
+4. El tirador no está en cooldown.
+
+El disparo **siempre acierta**. El objetivo pierde tanta vida como el daño del tirador a esa distancia. Si su vida llega a 0, se hunde y su casilla pasa a ser restos.
+
+**Cooldown.** Después de disparar, el barco queda en cooldown la cantidad de turnos propios indicada en su tabla. Con cooldown 1, el acorazado dispara un turno sí y uno no.
+
+## Visión y niebla de guerra
+
+Cada jugador solo ve los barcos enemigos que su flota detecta; el resto del tablero queda bajo niebla. El mapa (agua, islas, rocas) y los restos de barcos hundidos se ven siempre.
+
+**Cuándo una casilla es visible.** Una casilla es visible para un jugador si al menos uno de sus barcos vivos cumple las dos condiciones:
+
+- La distancia a la casilla es menor o igual a su visión.
+- Hay línea de visión entre el barco y la casilla.
+
+**Visión compartida.** Si un barco propio ve a un enemigo, toda la flota puede dispararle, siempre que cada tirador cumpla sus propias condiciones de rango y línea de visión. Así, un destructor puede detectar a un enemigo y un acorazado lejano puede dispararle.
+
+**Línea de visión.** Se traza una línea recta entre el centro de las dos casillas (algoritmo de Bresenham). Si alguna casilla intermedia bloquea la visión (una isla), no hay línea de visión. Las casillas de los extremos no cuentan.
+
+**Revelado por disparo.** Un barco que dispara queda revelado para el rival durante todo el turno siguiente del rival, aunque esté fuera de su visión. Esto permite contraatacar y le da un costo real a disparar.
+
+**Resumen al volver del blackout.** Al tomar el control, el jugador ve en orden todo lo que le hizo el rival:
+
+- Cada disparo recibido: qué barco propio, cuánto daño y desde qué casilla (el atacante queda revelado).
+- Cada barco propio hundido, con la posición donde quedó el resto.
+- Cada choque con un barco enemigo oculto (ver casos borde).
+
+Además, en el tablero los barcos propios muestran su vida actualizada.
+
+## Casos borde
+
+Estas reglas resuelven situaciones que aparecen al testear y que conviene tener definidas antes de programar.
+
+| Situación | Regla |
+| --- | --- |
+| Moverse hacia un enemigo oculto | El movimiento se corta en el paso anterior y los pasos restantes se pierden. El enemigo queda revelado hasta el final del turno. El rival ve el choque en su resumen. |
+| Diagonal entre dos obstáculos | Si las dos casillas ortogonales que forman la diagonal bloquean, la diagonal bloquea igual (paso o visión según el tipo). Si solo bloquea una, la diagonal está libre. |
+| Disparar y después moverse | No está permitido: el orden es mover y después disparar. |
+| Terminar un movimiento sobre restos | Está permitido; los restos no bloquean nada. |
+| Barco entre el tirador y el objetivo | No bloquea el disparo; los barcos no bloquean la visión. |
+| Hundir el último barco rival | La partida termina en el acto, sin completar el turno. |
+| Obstáculo fuera de la zona neutral en un mapa | El mapa es inválido: el tablero lanza una excepción al construirse. |
+| Barco en casilla ocupada u obstáculo durante el despliegue | La ubicación se rechaza y el jugador elige otra casilla. |
+
+## Alcance: MVP y extras
+
+Primero se construye un MVP jugable completo. Los extras se suman después, solo si el MVP está terminado y testeado.
+
+**MVP**
+
+- Tablero 10x10 con zonas y un mapa fijo con islas y rocas.
+- Tres tipos de barco con sus atributos, y la flota fija de 6 barcos por jugador.
+- Despliegue con blackout.
+- Turnos con movimiento paso a paso, disparo, daño por distancia y cooldown.
+- Visión compartida, línea de visión, niebla de guerra y revelado por disparo.
+- Resumen del turno rival y condición de victoria.
+- Primero por consola y después con interfaz Swing.
+
+**Extras posibles**
+
+- Habilidad especial por tipo: torpedos (destructor), radar (crucero), salva doble (acorazado).
+- Varios mapas cargados desde archivos de texto.
+- Guardar y cargar partida.
+- Registro de la partida en un archivo de log.
+- Permitir disparar y después moverse.
+- Límite de turnos para evitar partidas trabadas.
+- Estadísticas de partida (daño hecho, barcos hundidos por jugador).
+
+## Enfoque técnico y relación con la materia
+
+El juego se implementa en Java separando la lógica de la interfaz: primero se construye y se testea por consola el modelo (tablero, barcos, reglas y turnos), y al final se le agrega la interfaz Swing sin modificar la lógica.
+
+El modelado arranca con diagramas UML de clases y de secuencia antes de escribir código. Estos son los contenidos de la materia que aplica el proyecto:
+
+| Contenido | Dónde aparece en el juego |
+| --- | --- |
+| Clases, objetos, encapsulamiento | Barcos, jugadores, tablero y partida con atributos privados y métodos de acceso |
+| Herencia y clases abstractas | Barco abstracto con Destructor, Crucero y Acorazado; Casilla abstracta con Agua, Roca, Isla y Restos |
+| Polimorfismo y sobreescritura | Cada barco calcula su daño según la distancia; cada casilla responde si bloquea el paso o la visión |
+| Interfaces y contratos | Contratos para las acciones de los barcos y, si se agregan, para las habilidades especiales |
+| Clases inmutables | Posición (fila, columna) |
+| Enumerados | Direcciones de movimiento, zonas del tablero |
+| GRASP | Partida como controlador; cada clase decide sobre la información que tiene (experto en información) |
+| SOLID | Nuevos tipos de barco o de casilla se agregan sin modificar las clases existentes (abierto/cerrado) |
+| Colecciones | Flotas de barcos, historial de acciones del turno, orden de barcos por vida o tipo |
+| Excepciones | Excepciones propias para movimiento inválido, objetivo fuera de rango y mapa inválido |
+| Entrada/salida y flujos | Interacción por consola y, como extra, lectura de mapas y guardado de partidas en archivos |
+| Interfaz gráfica y eventos | Tablero, pantallas de blackout y resumen en Swing, con manejo de eventos de clic |
+
+**Próximo paso:** el diagrama de clases y el diagrama de secuencia del caso "un barco dispara a un enemigo".
