@@ -182,25 +182,4 @@ Primero se construye un MVP jugable completo. Los extras se suman después, solo
 - Límite de turnos para evitar partidas trabadas.
 - Estadísticas de partida (daño hecho, barcos hundidos por jugador).
 
-## Enfoque técnico y relación con la materia
 
-El juego se implementa en Java separando la lógica de la interfaz: primero se construye y se testea por consola el modelo (tablero, barcos, reglas y turnos), y al final se le agrega la interfaz Swing sin modificar la lógica.
-
-El modelado arranca con diagramas UML de clases y de secuencia antes de escribir código. Estos son los contenidos de la materia que aplica el proyecto:
-
-| Contenido | Dónde aparece en el juego |
-| --- | --- |
-| Clases, objetos, encapsulamiento | Barcos, jugadores, tablero y partida con atributos privados y métodos de acceso |
-| Herencia y clases abstractas | Barco abstracto con Destructor, Crucero y Acorazado; Casilla abstracta con Agua, Roca, Isla y Restos |
-| Polimorfismo y sobreescritura | Cada barco calcula su daño según la distancia; cada casilla responde si bloquea el paso o la visión |
-| Interfaces y contratos | Contratos para las acciones de los barcos y, si se agregan, para las habilidades especiales |
-| Clases inmutables | Posición (fila, columna) |
-| Enumerados | Direcciones de movimiento, zonas del tablero |
-| GRASP | Partida como controlador; cada clase decide sobre la información que tiene (experto en información) |
-| SOLID | Nuevos tipos de barco o de casilla se agregan sin modificar las clases existentes (abierto/cerrado) |
-| Colecciones | Flotas de barcos, historial de acciones del turno, orden de barcos por vida o tipo |
-| Excepciones | Excepciones propias para movimiento inválido, objetivo fuera de rango y mapa inválido |
-| Entrada/salida y flujos | Interacción por consola y, como extra, lectura de mapas y guardado de partidas en archivos |
-| Interfaz gráfica y eventos | Tablero, pantallas de blackout y resumen en Swing, con manejo de eventos de clic |
-
-**Próximo paso:** el diagrama de clases y el diagrama de secuencia del caso "un barco dispara a un enemigo".
