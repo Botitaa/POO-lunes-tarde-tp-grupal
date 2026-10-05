@@ -26,3 +26,4 @@ Link act integradora: https://docs.google.com/document/d/1BUtzN5C75DizYcdylYRq7w
 31/08/26: UML ACTIVIDAD: https://docs.google.com/document/d/1fWo51WRC3EV5iPvRL2eAhnqVIMV8ic8F/edit
 
 28/09/26: Definición reglas TPO.
+03/10/26: Diagrama UML
