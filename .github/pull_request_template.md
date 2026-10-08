@@ -14,7 +14,7 @@ Closes #
 - [ ] Tests nuevos si toca `modelo`, `controlador` o `persistencia`
 - [ ] Respeta `docs/DISENO_CLASES.md` (si cambié una firma pública, actualicé el UML acá)
 - [ ] Javadoc en los métodos públicos
-- [ ] Sin `System.out`; uso el logger
+- [ ] Sin `System.out`
 - [ ] Solo toca archivos de esta tarea (nada de `.idea/`, `target/`, `.DS_Store`)
 
 ## Notas para quien revisa

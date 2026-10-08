@@ -9,8 +9,7 @@ import javax.swing.SwingUtilities;
  * Punto de entrada de Batalla Naval Táctica.
  *
  * <p>Por ahora solo abre la ventana principal vacía. Más adelante, en este orden:
- * crea las carpetas de datos, configura el log, instala el manejador de errores
- * y le delega todo a {@code ControladorAplicacion}.</p>
+ * crea las carpetas de datos y le delega todo a {@code ControladorAplicacion}.</p>
  */
 public final class Main {
 
