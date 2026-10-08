@@ -28,7 +28,7 @@ src/main/java/batallanaval/
   modelo/        Posicion, Casilla, Tablero, Barco y subclases, Jugador
   controlador/   contrato de la partida y GestorPartida (las reglas)
   excepciones/   excepciones propias
-  log/           log técnico e historial de partida
+  historial/     historial de la partida
   persistencia/  guardar/cargar, estadísticas, configuración, mapas
   vista/         Swing: ventana, pantallas y tablero
   app/           Main y armado de la aplicación
@@ -96,14 +96,14 @@ Una tarea está terminada cuando:
 
 - Identificadores en español, sin tildes ni ñ (`danio`, no `daño`). Clases en `PascalCase`, métodos y atributos en `camelCase`, constantes en `MAYUSCULAS`.
 - Atributos siempre `private`; lo que no cambia, `final`. Las colecciones salen con `List.copyOf(...)`.
-- Nada de `System.out`: se usa el logger (`private static final Logger LOG = Logger.getLogger(MiClase.class.getName());`).
+- Nada de `System.out`: los errores y avisos se muestran en la GUI (barra de estado o diálogo).
 - Reglas violadas → excepción del paquete `excepciones`, con un mensaje que entienda el jugador.
 
 ## Equipo
 
 | Integrante | GitHub | Rol |
 | --- | --- | --- |
-| Agustín "Bota" | [@Botitaa](https://github.com/Botitaa) | Partida y reglas, logs, Git |
+| Agustín "Bota" | [@Botitaa](https://github.com/Botitaa) | Partida y reglas, historial, Git |
 | Marcos | [@enevoldsenmar](https://github.com/enevoldsenmar) | Tablero y mapa, persistencia base |
 | Santi | [@Faccio7L](https://github.com/Faccio7L) | Barcos y combate, persistencia, UML |
 | Bruno | [@Bruno-Dominguez](https://github.com/Bruno-Dominguez) | Vista del tablero (Swing) |

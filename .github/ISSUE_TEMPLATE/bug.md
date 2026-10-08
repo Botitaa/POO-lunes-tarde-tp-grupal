@@ -19,7 +19,3 @@ assignees: ""
 1.
 2.
 3.
-
-## Log
-
-<!-- Si hay, las líneas de datos/logs/batalla-naval-0.log alrededor del error. -->

@@ -1,8 +1,8 @@
 # Batalla Naval Táctica — Diseño de clases
 
-Actualizado: 5 de octubre de 2026
+Actualizado: 8 de octubre de 2026
 
-El juego tiene 70 tipos (clases, interfaces, enums y records) repartidos en 7 paquetes. Este documento dice qué hace cada una y sus métodos clave; es el contrato entre módulos y se actualiza junto con el UML.
+El juego tiene unos 65 tipos (clases, interfaces, enums y records) repartidos en 7 paquetes. Este documento dice qué hace cada una y sus métodos clave; es el contrato entre módulos y se actualiza junto con el UML.
 
 ## Arquitectura
 
@@ -11,10 +11,10 @@ Siete paquetes bajo `batallanaval`, con dependencias en un solo sentido: el mode
 | Paquete | Contiene | Puede usar | Responsable |
 | --- | --- | --- | --- |
 | `modelo` | Posición, casillas, tablero, barcos, jugador | `excepciones` | Marcos (tablero), Santi (barcos), Bota (jugador) |
-| `controlador` | Contrato de la partida, `GestorPartida`, fases, observador, vistas de solo lectura | `modelo`, `log`, `excepciones` | Bota |
+| `controlador` | Contrato de la partida, `GestorPartida`, fases, observador, vistas de solo lectura e instantánea | `modelo`, `historial`, `excepciones` | Bota |
 | `excepciones` | Excepciones propias | nada | Todos |
-| `log` | Log técnico e historial de partida | `excepciones` | Bota |
-| `persistencia` | Guardar y cargar, estadísticas, configuración, mapas desde archivo | `modelo`, `controlador`, `log`, `excepciones` | Marcos + Santi |
+| `historial` | Historial de partida (eventos que ve el jugador) | `excepciones` | Bota |
+| `persistencia` | Guardar y cargar (texto), estadísticas, configuración, mapas desde archivo | `modelo`, `controlador`, `historial`, `excepciones` | Marcos + Santi |
 | `vista` | Ventana, pantallas y panel del tablero en Swing | interfaces y records de `controlador`, interfaces de `persistencia`, `excepciones` | Bruno (tablero), Guille (pantallas) |
 | `app` | `Main` y armado de la aplicación | todo | Bota |
 
@@ -22,9 +22,9 @@ Reglas que valen para todas las clases:
 
 - Atributos `private`; lo que no cambia, `final`. Colecciones que salen de una clase se devuelven con `List.copyOf` o `Collections.unmodifiableList`.
 - La vista nunca recibe un `Barco`, `Jugador` o `Tablero`: recibe `EstadoBarco`, `EstadoJugador` y `Casilla` (inmutables).
-- Ninguna clase usa `System.out`; se loguea con `private static final Logger LOG = Logger.getLogger(X.class.getName());`.
+- Ninguna clase usa `System.out` para el juego; errores y avisos se muestran en la GUI (barra de estado o diálogo).
 - Reglas violadas → excepción de `excepciones` con mensaje para el jugador. Errores de archivo → `PersistenciaException`.
-- Lo que se guarda en disco implementa `Serializable` con `private static final long serialVersionUID = 1L;`.
+- Lo que se guarda en disco se escribe como texto a través de `InstantaneaPartida`; ninguna clase del modelo es `Serializable`.
 - Identificadores en español sin tildes ni ñ (`danio`), constantes en `MAYUSCULAS`.
 
 ## modelo — Tablero y mapa (Marcos)
@@ -33,9 +33,9 @@ Cuatro clases que saben todo sobre el espacio: dónde se puede pasar, qué se ve
 
 | Clase | Tipo | Qué hace | Miembros clave |
 | --- | --- | --- | --- |
-| `Posicion` | Clase `final` inmutable, `Serializable` | Una casilla del tablero (fila, columna). Se usa como clave en `Set` y `Map`. | `getFila()`, `getColumna()`, `distanciaChebyshev(Posicion)`, `equals`, `hashCode`, `toString` ("(4,5)") |
+| `Posicion` | Clase `final` inmutable | Una casilla del tablero (fila, columna). Se usa como clave en `Set` y `Map`. | `getFila()`, `getColumna()`, `distanciaChebyshev(Posicion)`, `equals`, `hashCode`, `toString` ("(4,5)") |
 | `Casilla` | `enum` | Tipo de casilla con sus propiedades fijas: AGUA, PIEDRA, ISLA, RESTOS. | `bloqueaPaso()`, `bloqueaVision()`, `getSimbolo()`, `static desdeSimbolo(char)` |
-| `Tablero` | Clase, `Serializable` | Grilla 10x10 de `Casilla`, zonas del mapa y geometría: límites, vecinos, diagonales y línea de visión. Valida el mapa al construirse. | `FILAS`, `COLUMNAS`, `getCasilla`, `estaDentro`, `esTransitable`, `getVecinos`, `esDiagonalBloqueada`, `hayLineaDeVision` (Bresenham, sin contar extremos), `esZonaDespliegue(pos, numeroJugador)`, `esZonaDominacion`, `convertirEnRestos` |
+| `Tablero` | Clase | Grilla 10x10 de `Casilla`, zonas del mapa y geometría: límites, vecinos, diagonales y línea de visión. Valida el mapa al construirse. | `FILAS`, `COLUMNAS`, `getCasilla`, `estaDentro`, `esTransitable`, `getVecinos`, `esDiagonalBloqueada`, `hayLineaDeVision` (Bresenham, sin contar extremos), `esZonaDespliegue(pos, numeroJugador)`, `esZonaDominacion`, `convertirEnRestos`, `getRestos()` (casillas convertidas, para guardar) |
 | `Navegacion` | Clase utilitaria (constructor privado, métodos `static`) | Calcula a qué casillas puede llegar un barco este turno (BFS). | `casillasAlcanzables(Tablero, Posicion origen, int pasosMax, Set<Posicion> ocupadas)` |
 
 Decisiones ya tomadas en las reglas: AGUA y RESTOS no bloquean nada, PIEDRA bloquea solo el paso, ISLA bloquea paso y visión. La zona de dominación son las 4 casillas centrales (filas 4–5, columnas 4–5) y siempre es agua. La diagonal entre dos casillas que bloquean también bloquea. El mapa estándar lo lee `LectorMapas` desde `resources/mapas/estandar.txt`; si hay obstáculos fuera de las filas 3 a 6, `Tablero` lanza `MapaInvalidoException`.
@@ -46,8 +46,8 @@ Cada barco sabe su vida, sus cooldowns y qué puede hacer este turno; no sabe d�
 
 | Clase | Tipo | Qué hace | Miembros clave |
 | --- | --- | --- | --- |
-| `EstadisticasBarco` | `record`, `Serializable` | Valores fijos de un tipo de barco. Valida que nada sea negativo. | `vidaMaxima`, `costoMovimiento`, `movimientoMaxPorTurno`, `rangoDisparo`, `vision`, `danio`, `cooldownDisparoMax`, `cooldownHabilidadMax` |
-| `Barco` | Clase abstracta, `Serializable` | Estado de un barco y reglas propias: daño, curación, cooldowns, movimiento del turno, habilidad (Template Method) y revelado. | Constructor `protected Barco(int id, EstadisticasBarco, Posicion)`. `recibirDanio`, `curar`, `estaHundido`, `getDanio`, `getRangoDisparo`, `puedeDisparar`, `registrarDisparo`, `puedeMoverse`, `getCasillasRestantes`, `moverA`, `ubicarEn`, `puedeUsarHabilidad`, `usarHabilidad()` (final), `protected abstract void aplicarHabilidad()`, `reiniciarTurno`, `marcarRevelado`, `estaRevelado`, `abstract char getSimbolo()` |
+| `EstadisticasBarco` | `record` | Valores fijos de un tipo de barco. Valida que nada sea negativo. | `vidaMaxima`, `costoMovimiento`, `movimientoMaxPorTurno`, `rangoDisparo`, `vision`, `danio`, `cooldownDisparoMax`, `cooldownHabilidadMax` |
+| `Barco` | Clase abstracta | Estado de un barco y reglas propias: daño, curación, cooldowns, movimiento del turno, habilidad (Template Method) y revelado. | Constructor `protected Barco(int id, EstadisticasBarco, Posicion)`. `recibirDanio`, `curar`, `estaHundido`, `getDanio`, `getRangoDisparo`, `puedeDisparar`, `registrarDisparo`, `puedeMoverse`, `getCasillasRestantes`, `moverA`, `ubicarEn`, `puedeUsarHabilidad`, `usarHabilidad()` (final), `protected abstract void aplicarHabilidad()`, `reiniciarTurno`, `marcarRevelado`, `estaRevelado`, `abstract char getSimbolo()`, `restaurar(...)` (recibe vida, posición, cooldowns y flags guardados) |
 | `Destructor` | Subclase | Vida 3, costo 1, 4 casillas, rango 2, visión 2, daño 3, cooldown 0. Habilidad: daño doble este turno. | `aplicarHabilidad()` activa el flag; `getDanio()` devuelve 6 si está activa. Símbolo `D` |
 | `Crucero` | Subclase | Vida 5, costo 2, 3 casillas, rango 4, visión 3, daño 2, cooldown 0. Habilidad: se repara 2. | `aplicarHabilidad()` llama a `curar(2)`. Símbolo `C` |
 | `Acorazado` | Subclase | Vida 8, costo 3, 2 casillas, rango 6, visión 5, daño 4, cooldown 1. Habilidad: rango 8 este turno. | `getRangoDisparo()` devuelve 8 si está activa. Símbolo `A` |
@@ -59,8 +59,8 @@ Todas las habilidades tienen espera de 3 turnos, duran hasta el fin del turno, n
 
 | Clase | Tipo | Qué hace | Miembros clave |
 | --- | --- | --- | --- |
-| `Jugador` | Clase, `Serializable` | Dueño de una flota de 6 barcos y de sus puntos del turno. Responde preguntas sobre su flota (Experto). | `Jugador(String nombre, int numero, List<Barco> flota)`, `getNombre`, `getNumero` (1 o 2), `getFlota` (no modificable), `getBarcosVivos`, `tieneBarcosVivos`, `getVidaTotal`, `getPuntosMovimiento`, `tienePuntos(int)`, `gastarPuntos(int)`, `reponerPuntos(int)`, `getPuntosDominacion`, `sumarPuntoDominacion`, `getResumen` |
-| `ResumenTurno` | Clase, `Serializable` | Lo que el rival le hizo al jugador desde su último turno; se muestra al volver del blackout y se limpia. | `agregarDisparoRecibido(Barco objetivo, int danio, Posicion origen)`, `agregarBarcoHundido(Barco, Posicion)`, `getMensajes` (no modificable), `limpiar`, `estaVacio` |
+| `Jugador` | Clase | Dueño de una flota de 6 barcos y de sus puntos del turno. Responde preguntas sobre su flota (Experto). | `Jugador(String nombre, int numero, List<Barco> flota)`, `getNombre`, `getNumero` (1 o 2), `getFlota` (no modificable), `getBarcosVivos`, `tieneBarcosVivos`, `getVidaTotal`, `getPuntosMovimiento`, `tienePuntos(int)`, `gastarPuntos(int)`, `reponerPuntos(int)`, `getPuntosDominacion`, `sumarPuntoDominacion`, `getResumen` |
+| `ResumenTurno` | Clase | Lo que el rival le hizo al jugador desde su último turno; se muestra al volver del blackout y se limpia. | `agregarDisparoRecibido(Barco objetivo, int danio, Posicion origen)`, `agregarBarcoHundido(Barco, Posicion)`, `getMensajes` (no modificable), `limpiar`, `estaVacio` |
 
 `Jugador` recibe la flota ya creada por `FabricaFlota` en vez de crearla él: así se puede testear con flotas armadas a mano.
 
@@ -75,16 +75,17 @@ Todas las habilidades tienen espera de 3 turnos, duran hasta el fin del turno, n
 | `PartidaCombate` | Interfaz | Acciones del turno. | `seleccionarBarco(int id)`, `agregarPaso(Posicion)`, `deshacerPaso()`, `confirmarMovimiento()`, `usarHabilidad()`, `disparar(int idObjetivo)`, `terminarTurno()` |
 | `PartidaConsulta` | Interfaz | Todo lo que la vista lee, siempre en objetos inmutables. | `getCasilla(Posicion)`, `getJugadorActivo()`, `getRival()` (`EstadoJugador`), `getBarcosPropios()`, `getBarcosEnemigosVisibles()` (`List<EstadoBarco>`), `getBarcoSeleccionado()` (`Optional<EstadoBarco>`), `getRutaPlanificada`, `getCostoRuta`, `getCasillasAlcanzables`, `getObjetivosValidos`, `esVisible(Posicion)`, `getMensajesResumen`, `getHistorialVisible()`, `getRonda`, `getFase`, `estaTerminada`, `getResultado()` (`Optional<ResultadoPartida>`), `puedeGuardarse()` |
 | `Partida` | Interfaz | Une las tres; es el tipo que recibe la vista. Agrega el registro de observadores. | `extends PartidaDespliegue, PartidaCombate, PartidaConsulta`; `agregarObservador`, `quitarObservador` |
-| `GestorPartida` | Clase, `Serializable` | Implementa `Partida`: valida cada acción, la aplica, la anota en el historial, la loguea y avisa a los observadores. | Constantes `TURNOS_MAX = 40`, `PUNTOS_MOVIMIENTO_TURNO = 6`, `PUNTOS_DOMINACION_VICTORIA = 6`. Atributos: `jugador1`, `jugador2`, `jugadorActivo`, `tablero` (agregación), `fase`, `ronda`, `barcoSeleccionado`, `rutaPlanificada`, `historial`, `resultado`, `accionRealizadaEnTurno`, `transient List<ObservadorPartida> observadores`. Privados: `iniciarTurno`, `cambiarJugadorActivo`, `esVisibleParaJugador`, `actualizarDominacion`, `verificarVictoria`, `resolverLimiteDeTurnos`, `registrarEvento(TipoEvento, String)`, `notificar...`, `readObject` (recrea la lista de observadores al cargar), `validarEstado()` |
+| `GestorPartida` | Clase | Implementa `Partida`: valida cada acción, la aplica, la anota en el historial y avisa a los observadores. | Constantes `TURNOS_MAX = 40`, `PUNTOS_MOVIMIENTO_TURNO = 6`, `PUNTOS_DOMINACION_VICTORIA = 6`. Atributos: `jugador1`, `jugador2`, `jugadorActivo`, `tablero` (agregación), `fase`, `ronda`, `barcoSeleccionado`, `rutaPlanificada`, `historial`, `resultado`, `accionRealizadaEnTurno`, `List<ObservadorPartida> observadores`. Públicos para guardar: `crearInstantanea()` y `static restaurar(InstantaneaPartida, Tablero)` (la lista de observadores queda vacía; la vista se registra de nuevo). Privados: `iniciarTurno`, `cambiarJugadorActivo`, `esVisibleParaJugador`, `actualizarDominacion`, `verificarVictoria`, `resolverLimiteDeTurnos`, `registrarEvento(TipoEvento, String)`, `notificar...`, `validarEstado()` |
+| `InstantaneaPartida`, `DatosJugador`, `DatosBarco` | `record` | Foto completa de una partida para guardarla (Memento): es lo único que ven los repositorios. | `InstantaneaPartida(String mapa, int jugadorActivo, int ronda, FasePartida fase, List<DatosJugador> jugadores, List<DatosBarco> barcos, List<Posicion> restos, List<EventoPartida> eventos)`; `DatosJugador(numero, nombre, puntosMovimiento, puntosDominacion, List<String> resumenPendiente)`; `DatosBarco(id, tipo, jugador, posicion, vida, cooldownDisparo, cooldownHabilidad, casillasRestantes, habilidadActiva, revelado)` |
 | `ObservadorPartida` | Interfaz | La implementan la vista y el autoguardado para enterarse de cambios. | `onEstadoCambiado()`, `onFaseCambiada(FasePartida)`, `onTurnoIniciado(String nombreJugador)`, `onPartidaTerminada(ResultadoPartida)` |
 | `EstadoBarco` | `record` | Foto de solo lectura de un barco para la vista. | `id`, `simbolo`, `posicion`, `vida`, `vidaMaxima`, `casillasRestantes`, `cooldownDisparo`, `cooldownHabilidad`, `habilidadActiva`, `rangoDisparo`, `vision`, `esPropio` |
 | `EstadoJugador` | `record` | Foto de solo lectura de un jugador. | `nombre`, `numero`, `puntosMovimiento`, `puntosDominacion`, `barcosVivos`, `vidaTotal` |
-| `ResultadoPartida` | `record`, `Serializable` | Cómo terminó la partida; lo usan la pantalla final y las estadísticas. | `fecha`, `jugador1`, `jugador2`, `ganador` (`null` si empate), `rondas`, `motivo`; `esEmpate()` |
+| `ResultadoPartida` | `record` | Cómo terminó la partida; lo usan la pantalla final y las estadísticas. | `fecha`, `jugador1`, `jugador2`, `ganador` (`null` si empate), `rondas`, `motivo`; `esEmpate()` |
 | `MotivoFin` | `enum` | Por qué terminó. | HUNDIMIENTO, DOMINACION, LIMITE_TURNOS, EMPATE, ABANDONO |
 
 ## excepciones
 
-Las de reglas son unchecked: la vista ya deshabilita lo inválido, así que llegar ahí es un error que se muestra y se loguea. `PersistenciaException` es checked porque un archivo puede fallar aunque el código esté bien, y el compilador obliga a manejarlo.
+Las de reglas son unchecked: la vista ya deshabilita lo inválido, así que llegar ahí es un error que se muestra en la GUI sin cortar el juego. `PersistenciaException` es checked porque un archivo puede fallar aunque el código esté bien, y el compilador obliga a manejarlo.
 
 | Clase | Extiende | Se lanza cuando |
 | --- | --- | --- |
@@ -96,52 +97,9 @@ Las de reglas son unchecked: la vista ya deshabilita lo inválido, así que lleg
 | `MapaInvalidoException` | `RuntimeException` | Mapa mal formado u obstáculos fuera de la zona neutral |
 | `PersistenciaException` | `Exception` | Cualquier error al leer o escribir archivos; envuelve la causa original |
 
-## log — Log técnico e historial (Bota)
+## historial — Historial de partida (Bota)
 
-Hay dos registros separados. El **log técnico** es para el equipo (errores y depuración) y va a `datos/logs/`. El **historial de partida** es parte del juego: lo ve el jugador, se guarda con la partida y se exporta al final. Se usa `java.util.logging`, sin librerías externas.
-
-### ConfiguracionLog
-
-Clase utilitaria que configura el logger raíz una sola vez, al arrancar `Main`. Llamarla dos veces no duplica handlers.
-
-```java
-public final class ConfiguracionLog {
-    private static boolean inicializado = false;
-    private ConfiguracionLog() {}
-
-    // Consola en INFO; archivo datos/logs/batalla-naval-%g.log en FINE,
-    // 1 MB por archivo, 3 archivos rotando, modo append, con FormatoLog.
-    // Si no puede crear el archivo, sigue solo con consola y avisa por stderr.
-    public static synchronized void inicializar(Path carpetaLogs) { ... }
-}
-```
-
-### FormatoLog
-
-`extends java.util.logging.Formatter`. Una línea por evento y, si hay excepción, el stack trace debajo.
-
-```java
-// 2026-10-05 14:32:10 [FINE] GestorPartida - J1 movio Destructor#3 a (5,4)
-@Override public String format(LogRecord registro) { ... }
-```
-
-### ManejadorErroresGlobal
-
-`implements Thread.UncaughtExceptionHandler`. Atrapa cualquier excepción que nadie manejó, la loguea en SEVERE y muestra un `JOptionPane` con "Ocurrió un error inesperado" (desde el EDT con `SwingUtilities.invokeLater`) en vez de que la ventana quede colgada.
-
-```java
-public static void instalar() // Thread.setDefaultUncaughtExceptionHandler(new ManejadorErroresGlobal())
-@Override public void uncaughtException(Thread hilo, Throwable error) { ... }
-```
-
-**Niveles (convención del equipo):**
-
-| Nivel | Cuándo | Ejemplo |
-| --- | --- | --- |
-| SEVERE | Excepción no esperada o error de E/S | No se pudo escribir el guardado |
-| WARNING | Acción inválida que llegó a la lógica, archivo corrupto, línea mal formada | `DisparoInvalidoException: fuera de rango` |
-| INFO | Hitos: inicio y fin de partida, cambio de fase, guardar y cargar | Partida cargada: "partida1" ronda 12 |
-| FINE | Cada acción del juego | J2 disparó a Crucero#2 (-4) |
+El **historial de partida** es parte del juego: lo ve el jugador, se guarda con la partida y se exporta al final. No hay log técnico (`java.util.logging` queda fuera): los errores se muestran en la GUI y las acciones rechazadas no se anotan.
 
 ### TipoEvento
 
@@ -159,11 +117,11 @@ public enum TipoEvento {
 
 ### EventoPartida
 
-`record` inmutable y `Serializable`: una entrada del historial.
+`record` inmutable: una entrada del historial.
 
 ```java
 public record EventoPartida(int ronda, int numeroJugador, TipoEvento tipo,
-                            String descripcion, LocalDateTime momento) implements Serializable {
+                            String descripcion, LocalDateTime momento) {
     public boolean esVisiblePara(int numeroJugador) // tipo.esPublico() || this.numeroJugador == numeroJugador
     public String aLinea()                         // "[R12] J2 DISPARO: Acorazado (7,4) -> Crucero (4,4), -4"
 }
@@ -171,7 +129,7 @@ public record EventoPartida(int ronda, int numeroJugador, TipoEvento tipo,
 
 ### HistorialPartida
 
-Clase `Serializable` que guarda los eventos en orden. La crea `GestorPartida` y viaja dentro del guardado.
+Clase que guarda los eventos en orden. La crea `GestorPartida` y viaja dentro del guardado.
 
 ```java
 private final List<EventoPartida> eventos = new ArrayList<>();
@@ -182,23 +140,22 @@ public List<EventoPartida> getEventosVisiblesPara(int numeroJugador)
 public int cantidad()
 ```
 
-**Cómo se conecta:** `GestorPartida` tiene un método privado `registrarEvento(TipoEvento tipo, String descripcion)` que hace las dos cosas a la vez: agrega el `EventoPartida` al historial y escribe `LOG.fine(...)`. Cada acción confirmada lo llama una vez. Las acciones rechazadas no van al historial, solo al log en WARNING.
+**Cómo se conecta:** `GestorPartida` tiene un método privado `registrarEvento(TipoEvento tipo, String descripcion)` que agrega el `EventoPartida` al historial. Cada acción confirmada lo llama una vez. Las acciones rechazadas no van al historial: la vista muestra el mensaje de la excepción.
 
 ## persistencia — Archivos (Marcos + Santi)
 
-Se guardan cuatro cosas: la partida (binario serializado), las estadísticas (CSV), la configuración (`.properties`) y el historial exportado (`.txt`); además se lee el mapa (`.txt`). Todo vive bajo `datos/` en la carpeta donde corre el juego, y la vista solo conoce las interfaces `RepositorioPartidas` y `RepositorioEstadisticas` (DIP).
+Se guardan cuatro cosas: la partida (texto), las estadísticas (CSV), la configuración (`.properties`) y el historial exportado (`.txt`); además se lee el mapa (`.txt`). Todo vive bajo `datos/` en la carpeta donde corre el juego, y la vista solo conoce las interfaces `RepositorioPartidas` y `RepositorioEstadisticas` (DIP).
 
 ```text
 datos/
   config.properties
   estadisticas.csv
-  logs/batalla-naval-0.log
   partidas/partida1.sav, autoguardado.sav
   historiales/2026-10-05_1432_Bota-vs-Santi.txt
 src/main/resources/mapas/estandar.txt
 ```
 
-**Reparto:** Marcos hace `RutasApp`, `LectorMapas`, `ConfiguracionJuego` y `ExportadorHistorial`. Santi hace los repositorios de partidas y estadísticas, `CabeceraGuardado`, `EstadisticaJugador` y `CalculadoraRanking`.
+**Reparto:** Marcos hace `RutasApp`, `LectorMapas`, `ConfiguracionJuego` y `ExportadorHistorial`. Santi hace la instantánea (`crearInstantanea`/`restaurar`), los repositorios de partidas y estadísticas, `CabeceraGuardado`, `EstadisticaJugador` y `CalculadoraRanking`.
 
 ### RutasApp
 
@@ -207,7 +164,7 @@ Utilitaria con las rutas fijas, para que ningún otro archivo escriba un `"datos
 ```java
 public static final Path BASE = Path.of("datos");
 public static final Path PARTIDAS = BASE.resolve("partidas");
-public static final Path LOGS, HISTORIALES, ESTADISTICAS, CONFIGURACION;
+public static final Path HISTORIALES, ESTADISTICAS, CONFIGURACION;
 public static void crearCarpetas() throws PersistenciaException // Files.createDirectories
 ```
 
@@ -233,34 +190,56 @@ boolean existe(String nombre);
 
 ### CabeceraGuardado
 
-`record Serializable` que se escribe antes de la partida en el mismo archivo. Permite listar guardados (nombres, ronda, fecha) sin deserializar la partida entera y chequear la versión del formato.
+`record` que se escribe como segunda línea del archivo. Permite listar guardados (nombres, ronda, fecha) leyendo solo esa línea y chequear la versión del formato.
 
 ```java
 public record CabeceraGuardado(int versionFormato, String nombre, LocalDateTime fecha,
-        String jugador1, String jugador2, int ronda, FasePartida fase) implements Serializable {}
+        String jugador1, String jugador2, int ronda, FasePartida fase) {}
 ```
 
 ### RepositorioPartidasArchivo
 
-`implements RepositorioPartidas`. Un archivo `partidas/<nombre>.sav` por partida con `ObjectOutputStream`: primero la cabecera, después el `GestorPartida`.
+`implements RepositorioPartidas`. Un archivo de **texto** `partidas/<nombre>.sav` por partida, escrito con `BufferedWriter` y leído con `BufferedReader` (try-with-resources), igual que `LectorMapas`. No hay serialización de objetos.
 
 ```java
 public static final int VERSION_FORMATO = 1;
 private final Path carpeta;
 
 // guardar: valida el nombre (letras, números, - y _, hasta 40), exige partida.puedeGuardarse(),
-//   escribe en <nombre>.sav.tmp y después Files.move(..., REPLACE_EXISTING, ATOMIC_MOVE).
-//   Si se corta a la mitad, el guardado anterior queda intacto.
-// cargar: lee la cabecera, si versionFormato != VERSION_FORMATO -> PersistenciaException;
-//   lee el GestorPartida y llama a validarEstado().
-//   IOException, ClassNotFoundException, ClassCastException e InvalidClassException
-//   se envuelven en PersistenciaException("El archivo está dañado o es de otra versión", causa).
-// listar: lee solo cabeceras; un archivo roto se saltea con LOG.warning.
+//   pide partida.crearInstantanea() y escribe el archivo. Cualquier IOException -> PersistenciaException.
+// cargar: lee línea por línea, chequea la marca y VERSION_FORMATO, arma la InstantaneaPartida,
+//   llama a GestorPartida.restaurar(instantanea, tablero) y a validarEstado().
+//   Línea mal formada -> PersistenciaException("Línea 14 del guardado inválida"), con la causa original.
+// listar: lee solo las dos primeras líneas de cada archivo; uno roto se saltea.
 ```
 
-**Qué tiene que ser `Serializable`:** `Posicion`, `Tablero`, `EstadisticasBarco`, `Barco` (y por herencia sus subclases), `Jugador`, `ResumenTurno`, `GestorPartida`, `HistorialPartida`, `EventoPartida`, `ResultadoPartida`, `CabeceraGuardado`. Los `enum` ya lo son. En `GestorPartida`, `observadores` es `transient` y se recrea en `readObject`; los `Logger` son `static`, así que no se serializan. Después de cargar, la vista se vuelve a registrar como observador.
+**Formato del archivo** (una línea por dato, campos separados por `;`; los nombres de jugador no pueden tener `;`):
 
-**Cuándo se puede guardar:** `GestorPartida.puedeGuardarse()` devuelve `true` solo al inicio de un turno (sin acciones realizadas, sin ruta planificada) o en la pantalla de blackout. Así nunca se guarda un movimiento a medias.
+```text
+BATALLA-NAVAL;1
+CABECERA;partida1;2026-10-05T14:32:10;Bota;Santi;12;EN_JUEGO
+PARTIDA;estandar;2
+JUGADOR;1;Bota;6;1
+JUGADOR;2;Santi;6;0
+RESUMEN;2;Tu Crucero (4,4) recibió 4 de daño desde (7,4)
+BARCO;1;A;1;1;3;8;0;2;2;false;false
+BARCO;2;C;1;0;5;5;0;0;3;false;true
+RESTOS;5;3
+EVENTO;12;2;DISPARO;2026-10-05T14:31:50;Acorazado (7,4) -> Crucero (4,4), -4
+```
+
+| Línea | Campos |
+| --- | --- |
+| `BATALLA-NAVAL` | marca + versión del formato |
+| `CABECERA` | nombre, fecha, jugador1, jugador2, ronda, fase (es lo único que lee `listar`; ronda y fase de la partida salen de acá) |
+| `PARTIDA` | nombre del mapa (recurso), número del jugador activo |
+| `JUGADOR` | número, nombre, puntos de movimiento, puntos de dominación |
+| `RESUMEN` | número del jugador, mensaje pendiente (el mensaje es el último campo y puede tener `;`) |
+| `BARCO` | id, tipo (`D`/`C`/`A`), jugador, fila, columna (vacías si aún no se ubicó), vida, cooldown de disparo, cooldown de habilidad, casillas restantes, habilidad activa, revelado |
+| `RESTOS` | fila, columna de cada barco hundido |
+| `EVENTO` | ronda, jugador, tipo, momento, descripción (último campo, puede tener `;`; se lee con `split(";", 6)`) |
+
+**Cuándo se puede guardar:** `GestorPartida.puedeGuardarse()` devuelve `true` solo al inicio de un turno (sin acciones realizadas, sin ruta planificada) o en la pantalla de blackout. Así nunca se guarda un movimiento a medias, y por eso la instantánea no necesita ruta ni barco seleccionado. Después de cargar, la vista se registra de nuevo como observador.
 
 ### RepositorioEstadisticas (interfaz) y RepositorioEstadisticasCsv
 
@@ -269,7 +248,7 @@ void registrar(ResultadoPartida resultado) throws PersistenciaException;
 List<ResultadoPartida> obtenerTodos() throws PersistenciaException;
 ```
 
-La implementación CSV usa `;` como separador y una línea de encabezado `fecha;jugador1;jugador2;ganador;rondas;motivo`. `registrar` agrega con `Files.newBufferedWriter(archivo, CREATE, APPEND)` (si el archivo no existía, escribe antes el encabezado). `obtenerTodos` lee con `BufferedReader`; una línea mal formada se saltea con `LOG.warning` y no rompe el resto. Los nombres de jugador no pueden tener `;` (se valida en la pantalla de nueva partida).
+La implementación CSV usa `;` como separador y una línea de encabezado `fecha;jugador1;jugador2;ganador;rondas;motivo`. `registrar` agrega con `Files.newBufferedWriter(archivo, CREATE, APPEND)` (si el archivo no existía, escribe antes el encabezado). `obtenerTodos` lee con `BufferedReader`; una línea mal formada se saltea y no rompe el resto. Los nombres de jugador no pueden tener `;` (se valida en la pantalla de nueva partida).
 
 ### EstadisticaJugador y CalculadoraRanking
 
@@ -288,7 +267,7 @@ Se separa del repositorio para que la regla del ranking se pueda testear sin arc
 
 ### ConfiguracionJuego
 
-Envuelve un `java.util.Properties`. Si el archivo no existe o está roto, usa valores por defecto, loguea WARNING y lo reescribe.
+Envuelve un `java.util.Properties`. Si el archivo no existe o está roto, usa valores por defecto y lo reescribe.
 
 ```java
 // Claves: jugador1.ultimo, jugador2.ultimo, autoguardado (true), carpeta.partidas
@@ -340,18 +319,18 @@ Una sola ventana con `CardLayout`. Cada pantalla es un `JPanel` que recibe lo qu
 | `PanelEstadisticas` | `JPanel` | `JTable` con el ranking de `CalculadoraRanking`. |
 | `PanelReglas` | `JPanel` | Texto de reglas en un `JScrollPane`. |
 | `BarraMenuJuego` | `extends JMenuBar` | Partida → Guardar, Cargar, Abandonar (con confirmación); Ayuda → Reglas. |
-| `TareaGuardar` | `extends SwingWorker<Void, Void>` | Guarda en segundo plano para no congelar la ventana; en `done()` avisa éxito o muestra el error de `PersistenciaException`. |
-| `TareaCargar` | `extends SwingWorker<GestorPartida, Void>` | Carga en segundo plano; en `done()` entrega la partida a `ControladorAplicacion` o muestra el error. |
+| `TareaGuardar` | `implements Runnable` | Se ejecuta en un `Thread` propio para no congelar la ventana; al terminar, con `SwingUtilities.invokeLater`, avisa éxito o muestra el error de `PersistenciaException`. |
+| `TareaCargar` | `implements Runnable` | Carga en un `Thread` propio; con `invokeLater` entrega la partida a `ControladorAplicacion` o muestra el error. |
 
-`TareaGuardar` y `TareaCargar` son las que cubren hilos (Unidad 6). Todo cambio de componentes Swing se hace en el EDT.
+`TareaGuardar` y `TareaCargar` son las que cubren hilos (Unidad 6): se crean con `new Thread(tarea).start()`. Todo cambio de componentes Swing se hace en el EDT.
 
 ## app — Arranque (Bota)
 
 | Clase | Tipo | Qué hace |
 | --- | --- | --- |
-| `Main` | Clase con `main` | En orden: `RutasApp.crearCarpetas()`, `ConfiguracionLog.inicializar(RutasApp.LOGS)`, `ManejadorErroresGlobal.instalar()`, y después `SwingUtilities.invokeLater(() -> new ControladorAplicacion().iniciar())`. |
-| `ControladorAplicacion` | Clase | Arma todo (inyección por constructor a mano): crea `ConfiguracionJuego`, `RepositorioPartidasArchivo`, `RepositorioEstadisticasCsv` y `VentanaPrincipal`. Crea o carga la partida, registra observadores y decide qué pantalla mostrar según los eventos (`onFaseCambiada`, `onTurnoIniciado`, `onPartidaTerminada`). Al terminar: registra el resultado, exporta el historial y muestra `PanelFinPartida`. |
-| `AutoGuardado` | `implements ObservadorPartida` | Si `autoguardado=true`, en cada `onTurnoIniciado` guarda `autoguardado.sav` con una `TareaGuardar`. Un fallo se loguea en WARNING y no interrumpe la partida. |
+| `Main` | Clase con `main` | En orden: `RutasApp.crearCarpetas()` y después `SwingUtilities.invokeLater(() -> new ControladorAplicacion().iniciar())`. |
+| `ControladorAplicacion` | Clase | Arma todo (inyección por constructor a mano): crea `ConfiguracionJuego`, `RepositorioPartidasArchivo`, `RepositorioEstadisticasCsv` y `VentanaPrincipal`. Crea o carga la partida (con `GestorPartida.restaurar`), registra observadores y decide qué pantalla mostrar según los eventos (`onFaseCambiada`, `onTurnoIniciado`, `onPartidaTerminada`). Al terminar: registra el resultado, exporta el historial y muestra `PanelFinPartida`. |
+| `AutoGuardado` | `implements ObservadorPartida` | Si `autoguardado=true`, en cada `onTurnoIniciado` guarda `autoguardado.sav` con una `TareaGuardar`. Un fallo se avisa en la barra de estado y no interrumpe la partida. |
 
 ## Tests (JUnit 5)
 
@@ -367,7 +346,7 @@ Se testea todo lo que no es Swing. Cada autor escribe los tests de sus clases; l
 | `JugadorTest` | Puntos, barcos vivos, vida total | Bota |
 | `GestorPartidaTest` | Despliegue, turnos, movimiento, disparo, visión compartida, revelado, choque con enemigo oculto, dominación, las 3 victorias y desempates, cada excepción | Bota |
 | `HistorialPartidaTest` | Orden de eventos y filtro por jugador sin filtrar información oculta | Bota |
-| `RepositorioPartidasArchivoTest` | Guardar y cargar da una partida equivalente; archivo corrupto, de otra versión o inexistente lanza `PersistenciaException`; `listar` saltea archivos rotos | Santi |
+| `RepositorioPartidasArchivoTest` | Guardar y cargar da una instantánea igual; archivo corrupto (con número de línea), de otra versión o inexistente lanza `PersistenciaException`; `listar` saltea archivos rotos | Santi |
 | `RepositorioEstadisticasCsvTest` | Append, encabezado una sola vez, líneas rotas salteadas | Santi |
 | `CalculadoraRankingTest` | Conteo y orden del ranking, empates | Santi |
 | `LectorMapasTest` y `ConfiguracionJuegoTest` | Mapa estándar correcto, mapa mal formado, config faltante cae en defaults | Marcos |
