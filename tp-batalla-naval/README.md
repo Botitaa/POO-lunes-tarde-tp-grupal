@@ -103,8 +103,8 @@ Una tarea está terminada cuando:
 
 | Integrante | GitHub | Rol |
 | --- | --- | --- |
-| Agustín "Bota" | [@Botitaa](https://github.com/Botitaa) | Partida y reglas, historial, Git |
+| Agustín "Bota" | [@Botitaa](https://github.com/Botitaa) | Partida y reglas, Git |
 | Marcos | [@enevoldsenmar](https://github.com/enevoldsenmar) | Tablero y mapa, persistencia base |
 | Santi | [@Faccio7L](https://github.com/Faccio7L) | Barcos y combate, persistencia, UML |
-| Bruno | [@Bruno-Dominguez](https://github.com/Bruno-Dominguez) | Vista del tablero (Swing) |
+| Bruno | [@Bruno-Dominguez](https://github.com/Bruno-Dominguez) | Vista del tablero (Swing), historial |
 | Guille | [@guillermosap111](https://github.com/guillermosap111) | Pantallas y flujo (Swing) |
