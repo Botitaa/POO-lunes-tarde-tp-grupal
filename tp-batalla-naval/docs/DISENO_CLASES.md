@@ -10,10 +10,10 @@ Siete paquetes bajo `batallanaval`, con dependencias en un solo sentido: el mode
 
 | Paquete | Contiene | Puede usar | Responsable |
 | --- | --- | --- | --- |
-| `modelo` | Posición, casillas, tablero, barcos, jugador | `excepciones` | Marcos (tablero), Santi (barcos), Bota (jugador) |
+| `modelo` | Posición, casillas, tablero, barcos, jugador | `excepciones` | Marcos (tablero), Santi (barcos), Bota (jugador), Bruno (`ResumenTurno`) |
 | `controlador` | Contrato de la partida, `GestorPartida`, fases, observador, vistas de solo lectura e instantánea | `modelo`, `historial`, `excepciones` | Bota |
 | `excepciones` | Excepciones propias | nada | Todos |
-| `historial` | Historial de partida (eventos que ve el jugador) | `excepciones` | Bota |
+| `historial` | Historial de partida (eventos que ve el jugador) | `excepciones` | Bruno (`registrarEvento` en `GestorPartida`: Bota) |
 | `persistencia` | Guardar y cargar (texto), estadísticas, configuración, mapas desde archivo | `modelo`, `controlador`, `historial`, `excepciones` | Marcos + Santi |
 | `vista` | Ventana, pantallas y panel del tablero en Swing | interfaces y records de `controlador`, interfaces de `persistencia`, `excepciones` | Bruno (tablero), Guille (pantallas) |
 | `app` | `Main` y armado de la aplicación | todo | Bota |
@@ -33,10 +33,10 @@ Cuatro clases que saben todo sobre el espacio: dónde se puede pasar, qué se ve
 
 | Clase | Tipo | Qué hace | Miembros clave |
 | --- | --- | --- | --- |
-| `Posicion` | Clase `final` inmutable | Una casilla del tablero (fila, columna). Se usa como clave en `Set` y `Map`. | `getFila()`, `getColumna()`, `distanciaChebyshev(Posicion)`, `equals`, `hashCode`, `toString` ("(4,5)") |
+| `Posicion` | Clase `final` inmutable | Una casilla del tablero (fila, columna). Se usa como clave en `Set` y `Map`. | `getFila()`, `getColumna()`, `distanciaChebyshev(Posicion)`, `equals` (castea con `(Posicion) o` después de `instanceof`), `hashCode`, `toString` ("(4,5)") |
 | `Casilla` | `enum` | Tipo de casilla con sus propiedades fijas: AGUA, PIEDRA, ISLA, RESTOS. | `bloqueaPaso()`, `bloqueaVision()`, `getSimbolo()`, `static desdeSimbolo(char)` |
-| `Tablero` | Clase | Grilla 10x10 de `Casilla`, zonas del mapa y geometría: límites, vecinos, diagonales y línea de visión. Valida el mapa al construirse. | `FILAS`, `COLUMNAS`, `getCasilla`, `estaDentro`, `esTransitable`, `getVecinos`, `esDiagonalBloqueada`, `hayLineaDeVision` (Bresenham, sin contar extremos), `esZonaDespliegue(pos, numeroJugador)`, `esZonaDominacion`, `convertirEnRestos`, `getRestos()` (casillas convertidas, para guardar) |
-| `Navegacion` | Clase utilitaria (constructor privado, métodos `static`) | Calcula a qué casillas puede llegar un barco este turno (BFS). | `casillasAlcanzables(Tablero, Posicion origen, int pasosMax, Set<Posicion> ocupadas)` |
+| `Tablero` | Clase | Grilla 10x10 de `Casilla`, zonas del mapa y geometría: límites, vecinos, diagonales y línea de visión. Valida el mapa al construirse. | `FILAS`, `COLUMNAS`, `getCasilla(Posicion)` y `getCasilla(int fila, int columna)`, `estaDentro(Posicion)` y `estaDentro(int, int)` (sobrecarga), `esTransitable`, `getVecinos`, `esDiagonalBloqueada`, `hayLineaDeVision` (Bresenham, sin contar extremos), `esZonaDespliegue(pos, numeroJugador)`, `esZonaDominacion`, `convertirEnRestos`, `getRestos()` (casillas convertidas, para guardar) |
+| `Navegacion` | Clase utilitaria (constructor privado, métodos `static`) | Calcula a qué casillas puede llegar un barco este turno (BFS). Usa una clase anidada privada `Nodo` (posición y pasos gastados). | `casillasAlcanzables(Tablero, Posicion origen, int pasosMax, Set<Posicion> ocupadas)` |
 
 Decisiones ya tomadas en las reglas: AGUA y RESTOS no bloquean nada, PIEDRA bloquea solo el paso, ISLA bloquea paso y visión. La zona de dominación son las 4 casillas centrales (filas 4–5, columnas 4–5) y siempre es agua. La diagonal entre dos casillas que bloquean también bloquea. El mapa estándar lo lee `LectorMapas` desde `resources/mapas/estandar.txt`; si hay obstáculos fuera de las filas 3 a 6, `Tablero` lanza `MapaInvalidoException`.
 
@@ -47,7 +47,7 @@ Cada barco sabe su vida, sus cooldowns y qué puede hacer este turno; no sabe d�
 | Clase | Tipo | Qué hace | Miembros clave |
 | --- | --- | --- | --- |
 | `EstadisticasBarco` | `record` | Valores fijos de un tipo de barco. Valida que nada sea negativo. | `vidaMaxima`, `costoMovimiento`, `movimientoMaxPorTurno`, `rangoDisparo`, `vision`, `danio`, `cooldownDisparoMax`, `cooldownHabilidadMax` |
-| `Barco` | Clase abstracta | Estado de un barco y reglas propias: daño, curación, cooldowns, movimiento del turno, habilidad (Template Method) y revelado. | Constructor `protected Barco(int id, EstadisticasBarco, Posicion)`. `recibirDanio`, `curar`, `estaHundido`, `getDanio`, `getRangoDisparo`, `puedeDisparar`, `registrarDisparo`, `puedeMoverse`, `getCasillasRestantes`, `moverA`, `ubicarEn`, `puedeUsarHabilidad`, `usarHabilidad()` (final), `protected abstract void aplicarHabilidad()`, `reiniciarTurno`, `marcarRevelado`, `estaRevelado`, `abstract char getSimbolo()`, `restaurar(...)` (recibe vida, posición, cooldowns y flags guardados) |
+| `Barco` | Clase abstracta | Estado de un barco y reglas propias: daño, curación, cooldowns, movimiento del turno, habilidad (Template Method) y revelado. | Constructores `protected Barco(int id, EstadisticasBarco, Posicion)` y `protected Barco(int id, EstadisticasBarco)`, que llama a `this(id, estadisticas, null)` porque `FabricaFlota` crea los barcos sin posición. `recibirDanio`, `curar`, `estaHundido`, `getDanio`, `getRangoDisparo`, `puedeDisparar`, `registrarDisparo`, `puedeMoverse`, `getCasillasRestantes`, `moverA`, `ubicarEn`, `puedeUsarHabilidad`, `usarHabilidad()` (final), `protected abstract void aplicarHabilidad()`, `reiniciarTurno`, `marcarRevelado`, `estaRevelado`, `abstract char getSimbolo()`, `restaurar(...)` (recibe vida, posición, cooldowns y flags guardados) |
 | `Destructor` | Subclase | Vida 3, costo 1, 4 casillas, rango 2, visión 2, daño 3, cooldown 0. Habilidad: daño doble este turno. | `aplicarHabilidad()` activa el flag; `getDanio()` devuelve 6 si está activa. Símbolo `D` |
 | `Crucero` | Subclase | Vida 5, costo 2, 3 casillas, rango 4, visión 3, daño 2, cooldown 0. Habilidad: se repara 2. | `aplicarHabilidad()` llama a `curar(2)`. Símbolo `C` |
 | `Acorazado` | Subclase | Vida 8, costo 3, 2 casillas, rango 6, visión 5, daño 4, cooldown 1. Habilidad: rango 8 este turno. | `getRangoDisparo()` devuelve 8 si está activa. Símbolo `A` |
@@ -59,29 +59,36 @@ Todas las habilidades tienen espera de 3 turnos, duran hasta el fin del turno, n
 
 | Clase | Tipo | Qué hace | Miembros clave |
 | --- | --- | --- | --- |
-| `Jugador` | Clase | Dueño de una flota de 6 barcos y de sus puntos del turno. Responde preguntas sobre su flota (Experto). | `Jugador(String nombre, int numero, List<Barco> flota)`, `getNombre`, `getNumero` (1 o 2), `getFlota` (no modificable), `getBarcosVivos`, `tieneBarcosVivos`, `getVidaTotal`, `getPuntosMovimiento`, `tienePuntos(int)`, `gastarPuntos(int)`, `reponerPuntos(int)`, `getPuntosDominacion`, `sumarPuntoDominacion`, `getResumen` |
+| `Jugador` | Clase | Dueño de una flota de 6 barcos y de sus puntos del turno. Responde preguntas sobre su flota (Experto). | `Jugador(String nombre, int numero, List<Barco> flota)`, `getNombre`, `getNumero` (1 o 2), `getFlota` (no modificable), `getBarcoPorId(int)` (busca en un `Map<Integer, Barco>` interno, lo que usa `disparar(int idObjetivo)`), `getBarcosVivos`, `tieneBarcosVivos`, `getVidaTotal`, `getPuntosMovimiento`, `tienePuntos(int)`, `gastarPuntos(int)`, `reponerPuntos(int)`, `getPuntosDominacion`, `sumarPuntoDominacion`, `getResumen` |
 | `ResumenTurno` | Clase | Lo que el rival le hizo al jugador desde su último turno; se muestra al volver del blackout y se limpia. | `agregarDisparoRecibido(Barco objetivo, int danio, Posicion origen)`, `agregarBarcoHundido(Barco, Posicion)`, `getMensajes` (no modificable), `limpiar`, `estaVacio` |
 
-`Jugador` recibe la flota ya creada por `FabricaFlota` en vez de crearla él: así se puede testear con flotas armadas a mano.
+`ResumenTurno` lo implementa Bruno. `Jugador` recibe la flota ya creada por `FabricaFlota` en vez de crearla él: así se puede testear con flotas armadas a mano.
 
 ## controlador — Partida y reglas (Bota)
 
-`GestorPartida` es el único lugar donde se aplican las reglas (Controlador GRASP). La vista lo ve a través de tres interfaces chicas (ISP) unidas en `Partida`.
+`GestorPartida` es el único lugar donde se aplican las reglas (Controlador GRASP). La vista lo ve a través de cuatro interfaces chicas (ISP) unidas en `Partida`.
 
 | Clase | Tipo | Qué hace | Miembros clave |
 | --- | --- | --- | --- |
 | `FasePartida` | `enum` | Fase actual. | DESPLIEGUE_J1, DESPLIEGUE_J2, EN_JUEGO, TERMINADA |
 | `PartidaDespliegue` | Interfaz | Acciones del despliegue. | `ubicarBarco(int idBarco, Posicion)`, `retirarBarco(int idBarco)`, `getBarcosSinUbicar()`, `confirmarDespliegue()` |
 | `PartidaCombate` | Interfaz | Acciones del turno. | `seleccionarBarco(int id)`, `agregarPaso(Posicion)`, `deshacerPaso()`, `confirmarMovimiento()`, `usarHabilidad()`, `disparar(int idObjetivo)`, `terminarTurno()` |
-| `PartidaConsulta` | Interfaz | Todo lo que la vista lee, siempre en objetos inmutables. | `getCasilla(Posicion)`, `getJugadorActivo()`, `getRival()` (`EstadoJugador`), `getBarcosPropios()`, `getBarcosEnemigosVisibles()` (`List<EstadoBarco>`), `getBarcoSeleccionado()` (`Optional<EstadoBarco>`), `getRutaPlanificada`, `getCostoRuta`, `getCasillasAlcanzables`, `getObjetivosValidos`, `esVisible(Posicion)`, `getMensajesResumen`, `getHistorialVisible()`, `getRonda`, `getFase`, `estaTerminada`, `getResultado()` (`Optional<ResultadoPartida>`), `puedeGuardarse()` |
-| `Partida` | Interfaz | Une las tres; es el tipo que recibe la vista. Agrega el registro de observadores. | `extends PartidaDespliegue, PartidaCombate, PartidaConsulta`; `agregarObservador`, `quitarObservador` |
-| `GestorPartida` | Clase | Implementa `Partida`: valida cada acción, la aplica, la anota en el historial y avisa a los observadores. | Constantes `TURNOS_MAX = 40`, `PUNTOS_MOVIMIENTO_TURNO = 6`, `PUNTOS_DOMINACION_VICTORIA = 6`. Atributos: `jugador1`, `jugador2`, `jugadorActivo`, `tablero` (agregación), `fase`, `ronda`, `barcoSeleccionado`, `rutaPlanificada`, `historial`, `resultado`, `accionRealizadaEnTurno`, `List<ObservadorPartida> observadores`. Públicos para guardar: `crearInstantanea()` y `static restaurar(InstantaneaPartida, Tablero)` (la lista de observadores queda vacía; la vista se registra de nuevo). Privados: `iniciarTurno`, `cambiarJugadorActivo`, `esVisibleParaJugador`, `actualizarDominacion`, `verificarVictoria`, `resolverLimiteDeTurnos`, `registrarEvento(TipoEvento, String)`, `notificar...`, `validarEstado()` |
+| `PartidaConsulta` | Interfaz | Estado general que leen las pantallas, siempre en objetos inmutables. | `getFase`, `getRonda`, `estaTerminada`, `getResultado()` (`ResultadoPartida`, `null` mientras no termina), `puedeGuardarse()`, `getJugadorActivo()`, `getRival()` (`EstadoJugador`), `getMensajesResumen`, `getHistorialVisible()` |
+| `PartidaTablero` | Interfaz | Lo que necesita el panel del tablero para dibujar. Las acciones que dispara con los clics salen de `PartidaDespliegue` y `PartidaCombate`. | `getCasilla(Posicion)`, `esVisible(Posicion)`, `getBarcosPropios()`, `getBarcosEnemigosVisibles()` (`List<EstadoBarco>`), `getBarcoSeleccionado()` (`EstadoBarco`, `null` si no hay selección), `getRutaPlanificada`, `getCostoRuta`, `getCasillasAlcanzables`, `getObjetivosValidos` |
+| `Partida` | Interfaz | Une las cuatro; es el tipo que recibe la vista. Cada pantalla puede declarar solo la interfaz que usa (ISP): cada una tiene menos de 12 métodos. Agrega el registro de observadores. | `extends PartidaDespliegue, PartidaCombate, PartidaConsulta, PartidaTablero`; `agregarObservador`, `quitarObservador` |
+| `GestorPartida` | Clase | Implementa `Partida`: valida cada acción, la aplica, la anota en el historial y avisa a los observadores. | Constantes `TURNOS_MAX = 40`, `PUNTOS_MOVIMIENTO_TURNO = 6`, `PUNTOS_DOMINACION_VICTORIA = 6`. Atributos: `jugador1`, `jugador2`, `jugadorActivo`, `tablero` (agregación), `fase`, `ronda`, `barcoSeleccionado`, `rutaPlanificada`, `historial`, `resultado`, `accionRealizadaEnTurno`, `List<ObservadorPartida> observadores`. Públicos para guardar: `crearInstantanea()` y `static restaurar(InstantaneaPartida, Tablero)` (la lista de observadores queda vacía; la vista se registra de nuevo; lanza `IllegalStateException` si el estado guardado es imposible). Privados: `iniciarTurno`, `cambiarJugadorActivo`, `esVisibleParaJugador(Jugador, Posicion)`, `esBarcoVisibleParaJugador(Jugador, Barco)`, `actualizarDominacion`, `verificarVictoria`, `resolverLimiteDeTurnos`, `registrarEvento(TipoEvento, String)`, `notificar...`. De paquete (sin modificador, a propósito): `validarEstado()`, que usan `restaurar` y los tests del paquete |
 | `InstantaneaPartida`, `DatosJugador`, `DatosBarco` | `record` | Foto completa de una partida para guardarla (Memento): es lo único que ven los repositorios. | `InstantaneaPartida(String mapa, int jugadorActivo, int ronda, FasePartida fase, List<DatosJugador> jugadores, List<DatosBarco> barcos, List<Posicion> restos, List<EventoPartida> eventos)`; `DatosJugador(numero, nombre, puntosMovimiento, puntosDominacion, List<String> resumenPendiente)`; `DatosBarco(id, tipo, jugador, posicion, vida, cooldownDisparo, cooldownHabilidad, casillasRestantes, habilidadActiva, revelado)` |
 | `ObservadorPartida` | Interfaz | La implementan la vista y el autoguardado para enterarse de cambios. | `onEstadoCambiado()`, `onFaseCambiada(FasePartida)`, `onTurnoIniciado(String nombreJugador)`, `onPartidaTerminada(ResultadoPartida)` |
-| `EstadoBarco` | `record` | Foto de solo lectura de un barco para la vista. | `id`, `simbolo`, `posicion`, `vida`, `vidaMaxima`, `casillasRestantes`, `cooldownDisparo`, `cooldownHabilidad`, `habilidadActiva`, `rangoDisparo`, `vision`, `esPropio` |
+| `EstadoBarco` | `record` | Foto de solo lectura de un barco para la vista; la arma `GestorPartida` a partir de `Barco` (el modelo no conoce estos records). | `id`, `numeroJugador` (para el color), `simbolo`, `posicion`, `vida`, `vidaMaxima`, `casillasRestantes`, `cooldownDisparo`, `cooldownHabilidad`, `habilidadActiva`, `rangoDisparo`, `vision`, `esPropio` |
 | `EstadoJugador` | `record` | Foto de solo lectura de un jugador. | `nombre`, `numero`, `puntosMovimiento`, `puntosDominacion`, `barcosVivos`, `vidaTotal` |
 | `ResultadoPartida` | `record` | Cómo terminó la partida; lo usan la pantalla final y las estadísticas. | `fecha`, `jugador1`, `jugador2`, `ganador` (`null` si empate), `rondas`, `motivo`; `esEmpate()` |
 | `MotivoFin` | `enum` | Por qué terminó. | HUNDIMIENTO, DOMINACION, LIMITE_TURNOS, EMPATE, ABANDONO |
+
+### Visibilidad (niebla de guerra)
+
+La regla de qué ve cada jugador vive en **un solo método**: `GestorPartida.esVisibleParaJugador(Jugador observador, Posicion pos)`. Devuelve `true` si la casilla está en la zona de dominación, o si algún barco propio vivo tiene la casilla dentro de su visión (distancia de Chebyshev) y con línea de visión libre. Se eligió `GestorPartida` (Experto) porque es el único que conoce a los dos jugadores y al `Tablero`: `Barco` aporta su visión y su posición, y `Tablero` aporta la geometría (`hayLineaDeVision`, `esZonaDominacion`).
+
+`esBarcoVisibleParaJugador(Jugador, Barco)` delega en el anterior sobre la posición del barco y agrega el caso del barco revelado por disparo. Todo lo demás llama a estos métodos y no recalcula nada: `esVisible(Posicion)`, `getBarcosEnemigosVisibles`, `getObjetivosValidos`, la validación de `disparar` y el choque con un enemigo oculto al mover. La vista tampoco calcula niebla: `PanelTablero` solo pregunta `esVisible(Posicion)`.
 
 ## excepciones
 
@@ -97,7 +104,7 @@ Las de reglas son unchecked: la vista ya deshabilita lo inválido, así que lleg
 | `MapaInvalidoException` | `RuntimeException` | Mapa mal formado u obstáculos fuera de la zona neutral |
 | `PersistenciaException` | `Exception` | Cualquier error al leer o escribir archivos; envuelve la causa original |
 
-## historial — Historial de partida (Bota)
+## historial — Historial de partida (Bruno)
 
 El **historial de partida** es parte del juego: lo ve el jugador, se guarda con la partida y se exporta al final. No hay log técnico (`java.util.logging` queda fuera): los errores se muestran en la GUI y las acciones rechazadas no se anotan.
 
@@ -133,7 +140,7 @@ Clase que guarda los eventos en orden. La crea `GestorPartida` y viaja dentro de
 
 ```java
 private final List<EventoPartida> eventos = new ArrayList<>();
-public void registrar(EventoPartida evento)          // rechaza null
+public void registrar(EventoPartida evento)          // Objects.requireNonNull(evento)
 public List<EventoPartida> getEventos()              // List.copyOf
 public List<EventoPartida> getEventosDeRonda(int ronda)
 public List<EventoPartida> getEventosVisiblesPara(int numeroJugador)
@@ -208,8 +215,10 @@ private final Path carpeta;
 // guardar: valida el nombre (letras, números, - y _, hasta 40), exige partida.puedeGuardarse(),
 //   pide partida.crearInstantanea() y escribe el archivo. Cualquier IOException -> PersistenciaException.
 // cargar: lee línea por línea, chequea la marca y VERSION_FORMATO, arma la InstantaneaPartida,
-//   llama a GestorPartida.restaurar(instantanea, tablero) y a validarEstado().
-//   Línea mal formada -> PersistenciaException("Línea 14 del guardado inválida"), con la causa original.
+//   llama a GestorPartida.restaurar(instantanea, tablero), que valida el estado por dentro (validarEstado)
+//   y lanza IllegalStateException si es imposible; el repositorio la envuelve en PersistenciaException.
+//   Los números se leen con Integer.parseInt y los booleanos con Boolean.parseBoolean.
+//   Línea mal formada o NumberFormatException -> PersistenciaException("Línea 14 del guardado inválida"), con la causa original.
 // listar: lee solo las dos primeras líneas de cada archivo; uno roto se saltea.
 ```
 
@@ -235,11 +244,11 @@ EVENTO;12;2;DISPARO;2026-10-05T14:31:50;Acorazado (7,4) -> Crucero (4,4), -4
 | `PARTIDA` | nombre del mapa (recurso), número del jugador activo |
 | `JUGADOR` | número, nombre, puntos de movimiento, puntos de dominación |
 | `RESUMEN` | número del jugador, mensaje pendiente (el mensaje es el último campo y puede tener `;`) |
-| `BARCO` | id, tipo (`D`/`C`/`A`), jugador, fila, columna (vacías si aún no se ubicó), vida, cooldown de disparo, cooldown de habilidad, casillas restantes, habilidad activa, revelado |
+| `BARCO` | id, tipo (`D`/`C`/`A`), jugador, fila, columna, vida, cooldown de disparo, cooldown de habilidad, casillas restantes, habilidad activa, revelado |
 | `RESTOS` | fila, columna de cada barco hundido |
 | `EVENTO` | ronda, jugador, tipo, momento, descripción (último campo, puede tener `;`; se lee con `split(";", 6)`) |
 
-**Cuándo se puede guardar:** `GestorPartida.puedeGuardarse()` devuelve `true` solo al inicio de un turno (sin acciones realizadas, sin ruta planificada) o en la pantalla de blackout. Así nunca se guarda un movimiento a medias, y por eso la instantánea no necesita ruta ni barco seleccionado. Después de cargar, la vista se registra de nuevo como observador.
+**Cuándo se puede guardar:** `GestorPartida.puedeGuardarse()` devuelve `true` solo con la partida EN_JUEGO, y únicamente al inicio de un turno (sin acciones realizadas, sin ruta planificada) o en la pantalla de blackout. No se guarda durante el despliegue. Así nunca se guarda un movimiento a medias, y por eso la instantánea no necesita ruta ni barco seleccionado. Después de cargar, la vista se registra de nuevo como observador.
 
 ### RepositorioEstadisticas (interfaz) y RepositorioEstadisticasCsv
 
@@ -255,7 +264,7 @@ La implementación CSV usa `;` como separador y una línea de encabezado `fecha;
 ```java
 public record EstadisticaJugador(String nombre, int jugadas, int ganadas,
                                  int perdidas, int empatadas) {
-    public double porcentajeVictorias() // 0 si jugadas == 0
+    public double porcentajeVictorias() // 0 si jugadas == 0; (double) ganadas / jugadas * 100
 }
 
 // CalculadoraRanking: agrupa los resultados por jugador en un Map<String, ...>
@@ -319,7 +328,7 @@ Una sola ventana con `CardLayout`. Cada pantalla es un `JPanel` que recibe lo qu
 | `PanelEstadisticas` | `JPanel` | `JTable` con el ranking de `CalculadoraRanking`. |
 | `PanelReglas` | `JPanel` | Texto de reglas en un `JScrollPane`. |
 | `BarraMenuJuego` | `extends JMenuBar` | Partida → Guardar, Cargar, Abandonar (con confirmación); Ayuda → Reglas. |
-| `TareaGuardar` | `implements Runnable` | Se ejecuta en un `Thread` propio para no congelar la ventana; al terminar, con `SwingUtilities.invokeLater`, avisa éxito o muestra el error de `PersistenciaException`. |
+| `TareaGuardar` | `implements Runnable` | Se ejecuta en un `Thread` propio para no congelar la ventana. `run()` hace `try { repositorio.guardar(...) } catch (PersistenciaException e) { invokeLater(mostrar error) } finally { invokeLater(volver a habilitar los botones) }`. |
 | `TareaCargar` | `implements Runnable` | Carga en un `Thread` propio; con `invokeLater` entrega la partida a `ControladorAplicacion` o muestra el error. |
 
 `TareaGuardar` y `TareaCargar` son las que cubren hilos (Unidad 6): se crean con `new Thread(tarea).start()`. Todo cambio de componentes Swing se hace en el EDT.
