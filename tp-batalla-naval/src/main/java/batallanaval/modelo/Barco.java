@@ -18,13 +18,7 @@ public abstract class Barco {
     private boolean habilidadActiva;
     private boolean revelado;
 
-    /**
-     * Constructor con posición inicial asignada.
-     *
-     * @param id           identificador único del barco.
-     * @param estadisticas valores estadísticos fijos de la nave.
-     * @param posicion     coordenada inicial en el mapa.
-     */
+  
     protected Barco(int id, EstadisticasBarco estadisticas, Posicion posicion) {
         this.id = id;
         this.estadisticas = estadisticas;
@@ -38,22 +32,12 @@ public abstract class Barco {
         this.revelado = false;
     }
 
-    /**
-     * Constructor para inicializar el barco sin posición (usado por la fábrica antes del despliegue).
-     *
-     * @param id           identificador único del barco.
-     * @param estadisticas valores estadísticos fijos de la nave.
-     */
+    
     protected Barco(int id, EstadisticasBarco estadisticas) {
         this(id, estadisticas, null);
     }
 
-    /**
-     * Aplica daño a la nave, descontando vida sin bajar de 0.
-     *
-     * @param cantidad puntos de daño recibidos.
-     * @throws IllegalArgumentException si la cantidad es negativa.
-     */
+
     public void recibirDanio(int cantidad) {
         if (cantidad < 0) {
             throw new IllegalArgumentException("El danio no puede ser negativo.");
@@ -64,13 +48,7 @@ public abstract class Barco {
         }
     }
 
-    /**
-     * Regenera puntos de vida sin sobrepasar la vida máxima.
-     * Solo tiene efecto si el barco no está hundido.
-     *
-     * @param cantidad puntos de vida a regenerar.
-     * @throws IllegalArgumentException si la cantidad es negativa.
-     */
+   
     public void curar(int cantidad) {
         if (cantidad < 0) {
             throw new IllegalArgumentException("La curacion no puede ser negativa.");
@@ -83,29 +61,17 @@ public abstract class Barco {
         }
     }
 
-    /**
-     * Indica si el barco ha sido destruido.
-     *
-     * @return {@code true} si la vida actual es menor o igual a 0.
-     */
+  
     public boolean estaHundido() {
         return this.vida <= 0;
     }
 
-    /**
-     * Daño base del disparo. Subclases pueden sobreescribirlo si su habilidad lo modifica.
-     *
-     * @return puntos de daño.
-     */
+    
     public int getDanio() {
         return estadisticas.danio();
     }
 
-    /**
-     * Rango de alcance de disparo. Subclases pueden sobreescribirlo si su habilidad lo modifica.
-     *
-     * @return alcance en distancia de Chebyshev.
-     */
+   
     public int getRangoDisparo() {
         return estadisticas.rangoDisparo();
     }
