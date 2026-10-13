@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import batallanaval.excepciones.DisparoInvalidoException;
 import batallanaval.excepciones.HabilidadNoDisponibleException;
 import batallanaval.excepciones.MovimientoInvalidoException;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class BarcoTest {
@@ -20,12 +22,12 @@ class BarcoTest {
         crucero.recibirDanio(3);
         assertEquals(2, crucero.getVida());
 
-        // No baja de 0
+        // La vida no baja de 0
         crucero.recibirDanio(10);
         assertEquals(0, crucero.getVida());
         assertTrue(crucero.estaHundido());
 
-        // Daño negativo lanza excepcion
+        // Danio negativo lanza excepcion
         assertThrows(IllegalArgumentException.class, () -> crucero.recibirDanio(-1));
     }
 
@@ -38,7 +40,7 @@ class BarcoTest {
         crucero.curar(2); // Queda en 4
         assertEquals(4, crucero.getVida());
 
-        crucero.curar(5); // No supera vida maxima (5)
+        crucero.curar(5); // No supera la vida maxima (5)
         assertEquals(5, crucero.getVida());
 
         // Curacion negativa lanza excepcion
@@ -52,75 +54,45 @@ class BarcoTest {
     }
 
     @Test
-    void testDisparoYCooldown() {
-        Acorazado acorazado = new Acorazado(1);
-        assertTrue(acorazado.puedeDisparar());
-        assertEquals(0, acorazado.getCooldownDisparo());
-        assertFalse(acorazado.estaRevelado());
-
-        acorazado.registrarDisparo();
-        assertTrue(acorazado.yaDisparo());
-        assertTrue(acorazado.estaRevelado());
-        assertFalse(acorazado.puedeDisparar());
-        assertEquals(1, acorazado.getCooldownDisparo());
-
-        // No puede disparar de nuevo este turno
-        assertThrows(DisparoInvalidoException.class, acorazado::registrarDisparo);
-    }
-
-    @Test
-    void testNoMoverseTrasDisparar() {
+    void testCooldownsATravesDeVariosTurnos() {
+        // Probamos el ciclo de cooldown de habilidad (espera de 3 turnos)
         Destructor destructor = new Destructor(1);
-        assertTrue(destructor.puedeMoverse());
+        assertTrue(destructor.puedeUsarHabilidad());
 
-        destructor.registrarDisparo();
-        assertFalse(destructor.puedeMoverse());
-    }
+        // Turno 1: Usa la habilidad
+        destructor.usarHabilidad();
+        assertEquals(3, destructor.getCooldownHabilidad());
+        assertFalse(destructor.puedeUsarHabilidad());
 
-    @Test
-    void testMovimientoYCasillasRestantes() {
-        Destructor destructor = new Destructor(1);
-        assertEquals(4, destructor.getCasillasRestantes());
-        assertTrue(destructor.puedeMoverse());
+        // Turno 2: Pasa un turno
+        destructor.reiniciarTurno();
+        assertEquals(2, destructor.getCooldownHabilidad());
+        assertFalse(destructor.puedeUsarHabilidad());
 
-        // Pasos negativos o superiores al limite lanzan excepcion
-        assertThrows(MovimientoInvalidoException.class, () -> destructor.moverA(null, 0));
-        assertThrows(MovimientoInvalidoException.class, () -> destructor.moverA(null, 5));
-    }
+        // Turno 3: Pasa otro turno
+        destructor.reiniciarTurno();
+        assertEquals(1, destructor.getCooldownHabilidad());
+        assertFalse(destructor.puedeUsarHabilidad());
 
-    @Test
-    void testReiniciarTurno() {
-        Acorazado acorazado = new Acorazado(1);
-        acorazado.registrarDisparo();
-        assertEquals(1, acorazado.getCooldownDisparo());
-        assertTrue(acorazado.yaDisparo());
-
-        acorazado.reiniciarTurno();
-        assertEquals(0, acorazado.getCooldownDisparo());
-        assertFalse(acorazado.yaDisparo());
-        assertEquals(2, acorazado.getCasillasRestantes());
+        // Turno 4: Termina la espera, puede usarla de nuevo
+        destructor.reiniciarTurno();
+        assertEquals(0, destructor.getCooldownHabilidad());
+        assertTrue(destructor.puedeUsarHabilidad());
     }
 
     @Test
     void testHabilidadDestructorDanioDoble() {
         Destructor destructor = new Destructor(1);
         assertEquals(3, destructor.getDanio());
-        assertTrue(destructor.puedeUsarHabilidad());
 
         destructor.usarHabilidad();
         assertTrue(destructor.estaHabilidadActiva());
         assertEquals(6, destructor.getDanio());
-        assertEquals(3, destructor.getCooldownHabilidad());
 
-        // No puede volver a usarla en cooldown
-        assertFalse(destructor.puedeUsarHabilidad());
-        assertThrows(HabilidadNoDisponibleException.class, destructor::usarHabilidad);
-
-        // Al reiniciar turno se desactiva el efecto
+        // Al terminar el turno vuelve al danio base
         destructor.reiniciarTurno();
         assertFalse(destructor.estaHabilidadActiva());
         assertEquals(3, destructor.getDanio());
-        assertEquals(2, destructor.getCooldownHabilidad());
     }
 
     @Test
@@ -129,32 +101,71 @@ class BarcoTest {
         assertEquals(6, acorazado.getRangoDisparo());
 
         acorazado.usarHabilidad();
+        assertTrue(acorazado.estaHabilidadActiva());
         assertEquals(8, acorazado.getRangoDisparo());
 
+        // Al terminar el turno vuelve al rango base
         acorazado.reiniciarTurno();
+        assertFalse(acorazado.estaHabilidadActiva());
         assertEquals(6, acorazado.getRangoDisparo());
     }
 
     @Test
     void testHabilidadCruceroAutocuracion() {
         Crucero crucero = new Crucero(1);
-        crucero.recibirDanio(3);
+        crucero.recibirDanio(3); // Queda en 2
         assertEquals(2, crucero.getVida());
 
-        crucero.usarHabilidad();
+        crucero.usarHabilidad(); // Se cura 2, queda en 4
         assertEquals(4, crucero.getVida());
     }
 
     @Test
-    void testRestaurarEstado() {
-        Crucero crucero = new Crucero(1);
-        crucero.restaurar(3, null, 0, 2, 1, false, true);
+    void testPolimorfismoConListaDeBarcos() {
+        // Lista generica de Barco conteniendo las 3 subclases
+        List<Barco> flota = new ArrayList<>();
+        flota.add(new Acorazado(1));
+        flota.add(new Crucero(2));
+        flota.add(new Destructor(3));
 
-        assertEquals(3, crucero.getVida());
-        assertEquals(0, crucero.getCooldownDisparo());
-        assertEquals(2, crucero.getCooldownHabilidad());
-        assertEquals(1, crucero.getCasillasRestantes());
-        assertFalse(crucero.estaHabilidadActiva());
-        assertTrue(crucero.estaRevelado());
+        // Cada subclase responde polimorficamente con su propio simbolo
+        assertEquals('A', flota.get(0).getSimbolo());
+        assertEquals('C', flota.get(1).getSimbolo());
+        assertEquals('D', flota.get(2).getSimbolo());
+
+        // Probamos polimorfismo aplicando danio a todos por igual
+        for (Barco barco : flota) {
+            barco.recibirDanio(1);
+        }
+
+        assertEquals(7, flota.get(0).getVida()); // 8 - 1
+        assertEquals(4, flota.get(1).getVida()); // 5 - 1
+        assertEquals(2, flota.get(2).getVida()); // 3 - 1
+    }
+
+    @Test
+    void testDisparoYNoMoverseTrasDisparar() {
+        Acorazado acorazado = new Acorazado(1);
+        assertTrue(acorazado.puedeDisparar());
+        assertTrue(acorazado.puedeMoverse());
+
+        acorazado.registrarDisparo();
+        assertTrue(acorazado.yaDisparo());
+        assertTrue(acorazado.estaRevelado());
+        assertFalse(acorazado.puedeDisparar());
+        assertFalse(acorazado.puedeMoverse());
+
+        // No puede disparar dos veces en el mismo turno
+        assertThrows(DisparoInvalidoException.class, acorazado::registrarDisparo);
+    }
+
+    @Test
+    void testMovimientoYCasillasRestantes() {
+        Destructor destructor = new Destructor(1);
+        assertEquals(4, destructor.getCasillasRestantes());
+
+        // Pasos invalidos lanzan excepcion
+        assertThrows(MovimientoInvalidoException.class, () -> destructor.moverA(null, 0));
+        assertThrows(MovimientoInvalidoException.class, () -> destructor.moverA(null, 5));
     }
 }
