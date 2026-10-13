@@ -1,5 +1,6 @@
 package batallanaval.modelo;
 
+
 public class Destructor extends Barco {
 
     private static final EstadisticasBarco ESTADISTICAS = new EstadisticasBarco(
@@ -13,10 +14,21 @@ public class Destructor extends Barco {
             3
     );
 
+    /**
+     * Crea un destructor sin posición inicial asignada.
+     *
+     * @param id identificador único del barco.
+     */
     public Destructor(int id) {
         super(id, ESTADISTICAS);
     }
 
+    /**
+     * Crea un destructor con posición inicial asignada.
+     *
+     * @param id       identificador único del barco.
+     * @param posicion posición inicial en el mapa.
+     */
     public Destructor(int id, Posicion posicion) {
         super(id, ESTADISTICAS, posicion);
     }
