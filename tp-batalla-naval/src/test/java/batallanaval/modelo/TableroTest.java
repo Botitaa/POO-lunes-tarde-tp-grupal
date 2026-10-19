@@ -200,4 +200,62 @@ class TableroTest {
         assertFalse(tablero.esTransitable(new Posicion(-1, 0)));
         assertFalse(tablero.esTransitable(new Posicion(0, 10)));
     }
+    // ---------- validarMapa: zonas ----------
+
+    @Test
+    void obstaculosEnLaZonaNeutralSonValidos() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[3][0] = Casilla.ISLA;   // primera fila neutral
+        grilla[6][9] = Casilla.PIEDRA; // última fila neutral
+        Tablero tablero = new Tablero(grilla);
+
+        assertSame(Casilla.ISLA, tablero.getCasilla(3, 0));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(6, 9));
+    }
+
+    @Test
+    void islaEnLaZonaDelJugador1LanzaExcepcion() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[2][5] = Casilla.ISLA; // última fila de despliegue de J1
+        try {
+            new Tablero(grilla);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void piedraEnLaZonaDelJugador1LanzaExcepcion() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[0][0] = Casilla.PIEDRA;
+        try {
+            new Tablero(grilla);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void obstaculoEnLaZonaDelJugador2LanzaExcepcion() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[7][3] = Casilla.PIEDRA; // primera fila de despliegue de J2
+        try {
+            new Tablero(grilla);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void restosEnLaZonaDeDespliegueNoSonObstaculo() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[1][1] = Casilla.RESTOS;
+        grilla[8][8] = Casilla.RESTOS;
+        Tablero tablero = new Tablero(grilla);
+
+        assertSame(Casilla.RESTOS, tablero.getCasilla(1, 1));
+    }
 }
