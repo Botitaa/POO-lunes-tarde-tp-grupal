@@ -9,6 +9,10 @@ public class Tablero {
 
     private static final int ULTIMA_FILA_DESPLIEGUE_J1 = 2;
     private static final int PRIMERA_FILA_DESPLIEGUE_J2 = 7;
+    private static final int PRIMERA_FILA_DOMINACION = 4;
+    private static final int ULTIMA_FILA_DOMINACION = 5;
+    private static final int PRIMERA_COLUMNA_DOMINACION = 4;
+    private static final int ULTIMA_COLUMNA_DOMINACION = 5;
 
     private static final String[] MAPA_ESTANDAR = {
             "~~~~~~~~~~",//0
@@ -22,9 +26,9 @@ public class Tablero {
             "~~~~~~~~~~",//8
             "~~~~~~~~~~"//9
     };
-    public Tablero(Casilla[][] grilla) {//constructir
+    public Tablero(Casilla[][] grilla) {//constructor
         validarMapa(grilla);//valido el mapa
-        this.grilla = new Casilla[FILAS][COLUMNAS];//copia defensiva botovich
+        this.grilla = new Casilla[FILAS][COLUMNAS];//copia defensiva
         for (int fila = 0; fila < FILAS; fila++) {
             for (int columna = 0; columna < COLUMNAS; columna++) {
                 this.grilla[fila][columna] = grilla[fila][columna];
@@ -97,4 +101,24 @@ public class Tablero {
         }
         return new Tablero(grilla);
     }
+
+    public boolean esZonaDespliegue(Posicion pos, int numeroJugador) {
+        if (numeroJugador != 1 && numeroJugador != 2) {
+            throw new IllegalArgumentException("El número de jugador debe ser 1 o 2");
+        }
+        if (!estaDentro(pos)) {
+            return false;
+        }
+        if (numeroJugador == 1) {
+            return pos.getFila() <= ULTIMA_FILA_DESPLIEGUE_J1;
+        } else {
+            return pos.getFila() >= PRIMERA_FILA_DESPLIEGUE_J2;
+        }
+    }
+
+    public boolean esZonaDominacion(Posicion pos) {
+        return pos.getFila() >= PRIMERA_FILA_DOMINACION && pos.getFila() <= ULTIMA_FILA_DOMINACION &&
+               pos.getColumna() >= PRIMERA_COLUMNA_DOMINACION && pos.getColumna() <= ULTIMA_COLUMNA_DOMINACION;
+    }
+
 }
