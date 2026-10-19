@@ -323,4 +323,104 @@ class TableroTest {
         Tablero segundo = Tablero.crearMapaEstandar();
         assertFalse(primero == segundo);
     }
+    // ---------- esZonaDespliegue ----------
+
+    @Test
+    void lasFilas0a2SonZonaDelJugador1() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.esZonaDespliegue(new Posicion(0, 0), 1));
+        assertTrue(tablero.esZonaDespliegue(new Posicion(2, 9), 1));
+    }
+
+    @Test
+    void laFila3NoEsZonaDelJugador1() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDespliegue(new Posicion(3, 0), 1));
+    }
+
+    @Test
+    void lasFilas7a9SonZonaDelJugador2() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.esZonaDespliegue(new Posicion(7, 0), 2));
+        assertTrue(tablero.esZonaDespliegue(new Posicion(9, 9), 2));
+    }
+
+    @Test
+    void laFila6NoEsZonaDelJugador2() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDespliegue(new Posicion(6, 0), 2));
+    }
+
+    @Test
+    void laZonaDeUnJugadorNoEsLaDelOtro() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDespliegue(new Posicion(0, 0), 2));
+        assertFalse(tablero.esZonaDespliegue(new Posicion(9, 9), 1));
+    }
+
+    @Test
+    void fueraDelTableroNoEsZonaDeDespliegue() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDespliegue(new Posicion(-1, 0), 1));
+        assertFalse(tablero.esZonaDespliegue(new Posicion(0, 10), 1));
+        assertFalse(tablero.esZonaDespliegue(new Posicion(10, 0), 2));
+        assertFalse(tablero.esZonaDespliegue(new Posicion(9, -1), 2));
+    }
+
+    @Test
+    void numeroDeJugadorInvalidoLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.esZonaDespliegue(new Posicion(0, 0), 3);
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void jugadorCeroTambienEsInvalido() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.esZonaDespliegue(new Posicion(0, 0), 0);
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    // ---------- esZonaDominacion ----------
+
+    @Test
+    void lasCuatroCasillasCentralesSonZonaDeDominacion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.esZonaDominacion(new Posicion(4, 4)));
+        assertTrue(tablero.esZonaDominacion(new Posicion(4, 5)));
+        assertTrue(tablero.esZonaDominacion(new Posicion(5, 4)));
+        assertTrue(tablero.esZonaDominacion(new Posicion(5, 5)));
+    }
+
+    @Test
+    void lasVecinasDeLaZonaCentralNoSonDominacion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDominacion(new Posicion(3, 4))); // arriba
+        assertFalse(tablero.esZonaDominacion(new Posicion(6, 5))); // abajo
+        assertFalse(tablero.esZonaDominacion(new Posicion(4, 3))); // izquierda
+        assertFalse(tablero.esZonaDominacion(new Posicion(5, 6))); // derecha
+        assertFalse(tablero.esZonaDominacion(new Posicion(3, 3))); // diagonal
+    }
+
+    @Test
+    void unaCasillaNeutralCualquieraNoEsDominacion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDominacion(new Posicion(3, 0)));
+        assertFalse(tablero.esZonaDominacion(new Posicion(4, 9)));
+    }
+
+    @Test
+    void fueraDelTableroNoEsZonaDeDominacion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDominacion(new Posicion(-1, 4)));
+        assertFalse(tablero.esZonaDominacion(new Posicion(4, 10)));
+    }
 }
