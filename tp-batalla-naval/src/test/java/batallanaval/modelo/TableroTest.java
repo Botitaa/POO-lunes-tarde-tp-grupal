@@ -258,4 +258,69 @@ class TableroTest {
 
         assertSame(Casilla.RESTOS, tablero.getCasilla(1, 1));
     }
+    // ---------- crearMapaEstandar ----------
+
+    @Test
+    void elMapaEstandarSeCreaSinErrores() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        assertSame(Casilla.AGUA, tablero.getCasilla(0, 0));
+    }
+
+    @Test
+    void elMapaEstandarTieneLosObstaculosDelMvp() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        assertSame(Casilla.ISLA, tablero.getCasilla(3, 2));
+        assertSame(Casilla.ISLA, tablero.getCasilla(3, 3));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(3, 7));
+        assertSame(Casilla.ISLA, tablero.getCasilla(4, 2));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(4, 6));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(5, 3));
+        assertSame(Casilla.ISLA, tablero.getCasilla(5, 7));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(6, 2));
+        assertSame(Casilla.ISLA, tablero.getCasilla(6, 6));
+        assertSame(Casilla.ISLA, tablero.getCasilla(6, 7));
+    }
+
+    @Test
+    void elMapaEstandarTieneDiezObstaculos() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        int obstaculos = 0;
+        for (int fila = 0; fila < Tablero.FILAS; fila++) {
+            for (int columna = 0; columna < Tablero.COLUMNAS; columna++) {
+                if (tablero.getCasilla(fila, columna).bloqueaPaso()) {
+                    obstaculos++;
+                }
+            }
+        }
+        assertEquals(10, obstaculos);
+    }
+
+    @Test
+    void laZonaDeDominacionDelMapaEstandarEsAgua() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        assertSame(Casilla.AGUA, tablero.getCasilla(4, 4));
+        assertSame(Casilla.AGUA, tablero.getCasilla(4, 5));
+        assertSame(Casilla.AGUA, tablero.getCasilla(5, 4));
+        assertSame(Casilla.AGUA, tablero.getCasilla(5, 5));
+    }
+
+    @Test
+    void elMapaEstandarEsSimetricoRespectoDelCentro() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        for (int fila = 0; fila < Tablero.FILAS; fila++) {
+            for (int columna = 0; columna < Tablero.COLUMNAS; columna++) {
+                int filaEspejo = Tablero.FILAS - 1 - fila;
+                int columnaEspejo = Tablero.COLUMNAS - 1 - columna;
+                assertSame(tablero.getCasilla(fila, columna),
+                        tablero.getCasilla(filaEspejo, columnaEspejo));
+            }
+        }
+    }
+
+    @Test
+    void cadaLlamadaDevuelveUnTableroNuevo() {
+        Tablero primero = Tablero.crearMapaEstandar();
+        Tablero segundo = Tablero.crearMapaEstandar();
+        assertFalse(primero == segundo);
+    }
 }

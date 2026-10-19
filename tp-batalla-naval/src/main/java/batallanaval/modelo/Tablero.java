@@ -10,6 +10,18 @@ public class Tablero {
     private static final int ULTIMA_FILA_DESPLIEGUE_J1 = 2;
     private static final int PRIMERA_FILA_DESPLIEGUE_J2 = 7;
 
+    private static final String[] MAPA_ESTANDAR = {
+            "~~~~~~~~~~",//0
+            "~~~~~~~~~~",//1
+            "~~~~~~~~~~",//2 ultima fila de despliegue jugador 1
+            "~~II~~~P~~",//3
+            "~~I~~~P~~~",//4
+            "~~~P~~~I~~",//5
+            "~~P~~~II~~",//6
+            "~~~~~~~~~~",//7 primera fila de despliegue jugador 2
+            "~~~~~~~~~~",//8
+            "~~~~~~~~~~"//9
+    };
     public Tablero(Casilla[][] grilla) {//constructir
         validarMapa(grilla);//valido el mapa
         this.grilla = new Casilla[FILAS][COLUMNAS];//copia defensiva botovich
@@ -72,5 +84,17 @@ public class Tablero {
 
     private boolean esFilaDespliegue(int fila) {
         return fila <= ULTIMA_FILA_DESPLIEGUE_J1 || fila >= PRIMERA_FILA_DESPLIEGUE_J2;
+    }
+//devuelve un tablero con el mapa estandar
+    public static Tablero crearMapaEstandar() {
+        Casilla[][] grilla = new Casilla[FILAS][COLUMNAS];
+        for (int fila = 0; fila < FILAS; fila++) {
+            String linea = MAPA_ESTANDAR[fila];//obtengo la linea correspondiente a la fila
+            for (int columna = 0; columna < COLUMNAS; columna++) {
+                grilla[fila][columna] = Casilla.desdeSimbolo(linea.charAt(columna));//charAt devuelve el caracter en la posicion columna de la linea,
+                                                                                    // y desdeSimbolo devuelve la casilla correspondiente al simbolo
+            }
+        }
+        return new Tablero(grilla);
     }
 }
