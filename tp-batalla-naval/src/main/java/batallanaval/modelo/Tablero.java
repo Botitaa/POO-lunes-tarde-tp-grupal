@@ -7,25 +7,15 @@ public class Tablero {
     public static final int COLUMNAS = 10;
     private final Casilla[][] grilla;
 
+    private static final int ULTIMA_FILA_DESPLIEGUE_J1 = 2;
+    private static final int PRIMERA_FILA_DESPLIEGUE_J2 = 7;
 
     public Tablero(Casilla[][] grilla) {//constructir
-        if(grilla == null) {
-            throw new MapaInvalidoException("La grilla no puede ser nula");
-        }
-        if(grilla.length != FILAS) {
-            throw new MapaInvalidoException("La grilla debe tener " + FILAS + " filas");
-        }
+        validarMapa(grilla);//valido el mapa
         this.grilla = new Casilla[FILAS][COLUMNAS];//copia defensiva botovich
-
-        for (int fila = 0; fila < FILAS; fila++) {//recorro las filas de la grillla
-            if(grilla[fila] == null||grilla[fila].length != COLUMNAS ) {
-                throw new MapaInvalidoException("La fila " + fila + "debe tener " + COLUMNAS + " columnas");
-            }
-            for (int columna = 0; columna < COLUMNAS; columna++) {//recorro las columnas de la grilla
-                if(grilla[fila][columna] == null) {
-                    throw new MapaInvalidoException("La casilla en la posición (" + fila + "," + columna + ") no puede ser nula");
-                }
-                this.grilla[fila][columna] = grilla[fila][columna];//asigno la casilla a la grilla
+        for (int fila = 0; fila < FILAS; fila++) {
+            for (int columna = 0; columna < COLUMNAS; columna++) {
+                this.grilla[fila][columna] = grilla[fila][columna];
             }
         }
     }
@@ -37,6 +27,7 @@ public class Tablero {
     public boolean estaDentro(Posicion posicion) {//verifica si la posicion esta dentro del tablero
         return estaDentro(posicion.getFila(), posicion.getColumna());
     }
+
     //devuelve la casilla en la posicion (fila, columna) si esta dentro del tablero, sino lanza una excepcion
     public Casilla getCasilla(int fila, int columna) {
         if (!estaDentro(fila, columna)) {
@@ -54,5 +45,32 @@ public class Tablero {
             return false;
         }
         return !getCasilla(pos).bloqueaPaso();
+    }
+
+    private void validarMapa(Casilla[][] grilla) {
+        if (grilla == null) {
+            throw new MapaInvalidoException("La grilla no puede ser nula");
+        }
+        if (grilla.length != FILAS) {
+            throw new MapaInvalidoException("La grilla debe tener " + FILAS + " filas");
+        }
+        for (int fila = 0; fila < FILAS; fila++) {//recorro las filas de la grillla
+            if (grilla[fila] == null || grilla[fila].length != COLUMNAS) {
+                throw new MapaInvalidoException("La fila " + fila + "debe tener " + COLUMNAS + " columnas");
+            }
+            for (int columna = 0; columna < COLUMNAS; columna++) {//recorro las columnas de la grilla
+                Casilla casilla = grilla[fila][columna];
+                if (casilla == null) {
+                    throw new MapaInvalidoException("La casilla en la posición (" + fila + "," + columna + ") no puede ser nula");
+                }
+                if (casilla.bloqueaPaso() && esFilaDespliegue(fila)) {
+                    throw new MapaInvalidoException("Hay un obstáculo en la zona de despliegue. Posicion: " + fila + "," + columna);
+                }
+            }
+        }
+    }
+
+    private boolean esFilaDespliegue(int fila) {
+        return fila <= ULTIMA_FILA_DESPLIEGUE_J1 || fila >= PRIMERA_FILA_DESPLIEGUE_J2;
     }
 }
