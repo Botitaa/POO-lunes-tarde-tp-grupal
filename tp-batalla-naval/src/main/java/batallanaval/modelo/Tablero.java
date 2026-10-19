@@ -1,5 +1,7 @@
 package batallanaval.modelo;
 
+import batallanaval.excepciones.MapaInvalidoException;
+
 public class Tablero {
     public static final int FILAS = 10;
     public static final int COLUMNAS = 10;
@@ -8,20 +10,20 @@ public class Tablero {
 
     public Tablero(Casilla[][] grilla) {//constructir
         if(grilla == null) {
-            throw new IllegalArgumentException("La grilla no puede ser nula");
+            throw new MapaInvalidoException("La grilla no puede ser nula");
         }
         if(grilla.length != FILAS) {
-            throw new IllegalArgumentException("La grilla debe tener " + FILAS + " filas");
+            throw new MapaInvalidoException("La grilla debe tener " + FILAS + " filas");
         }
         this.grilla = new Casilla[FILAS][COLUMNAS];//copia defensiva botovich
 
         for (int fila = 0; fila < FILAS; fila++) {//recorro las filas de la grillla
-            if(grilla[fila].length != COLUMNAS || grilla[fila] == null) {
-                throw new IllegalArgumentException("La fila " + fila + "debe tener " + COLUMNAS + " columnas");
+            if(grilla[fila] == null||grilla[fila].length != COLUMNAS ) {
+                throw new MapaInvalidoException("La fila " + fila + "debe tener " + COLUMNAS + " columnas");
             }
             for (int columna = 0; columna < COLUMNAS; columna++) {//recorro las columnas de la grilla
                 if(grilla[fila][columna] == null) {
-                    throw new IllegalArgumentException("La casilla en la posición (" + fila + "," + columna + ") no puede ser nula");
+                    throw new MapaInvalidoException("La casilla en la posición (" + fila + "," + columna + ") no puede ser nula");
                 }
                 this.grilla[fila][columna] = grilla[fila][columna];//asigno la casilla a la grilla
             }

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import batallanaval.excepciones.MapaInvalidoException;
 import org.junit.jupiter.api.Test;
 
 class TableroTest {
@@ -58,8 +59,8 @@ class TableroTest {
     void grillaNullLanzaExcepcion() {
         try {
             new Tablero(null);
-            fail("Debería haber lanzado IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
             // esperado
         }
     }
@@ -68,8 +69,8 @@ class TableroTest {
     void grillaConMenosFilasLanzaExcepcion() {
         try {
             new Tablero(new Casilla[9][10]);
-            fail("Debería haber lanzado IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
             // esperado
         }
     }
@@ -80,8 +81,8 @@ class TableroTest {
         grilla[2] = new Casilla[11];
         try {
             new Tablero(grilla);
-            fail("Debería haber lanzado IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
             // esperado
         }
     }
@@ -92,9 +93,20 @@ class TableroTest {
         grilla[7][8] = null;
         try {
             new Tablero(grilla);
-            fail("Debería haber lanzado IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
             assertTrue(e.getMessage().contains("(7,8)"));
+        }
+
+    }  @Test
+    void filaNullLanzaExcepcion() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[2] = null;
+        try {
+            new Tablero(grilla);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
         }
     }
 
