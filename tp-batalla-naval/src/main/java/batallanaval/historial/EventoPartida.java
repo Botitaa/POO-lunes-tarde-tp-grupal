@@ -9,7 +9,11 @@ import java.util.Objects;
  */
 public record EventoPartida(int ronda, int numeroJugador, TipoEvento tipo,
                             String descripcion, LocalDateTime momento) {
-
+    /**
+     * Crea un evento validando que tipo, descripcion y momento no sean nulos.
+     *
+     * @throws NullPointerException si tipo, descripcion o momento son nulos.
+     */
     public EventoPartida {
         Objects.requireNonNull(tipo, "El tipo de evento no puede ser nulo.");
         Objects.requireNonNull(descripcion, "La descripcion no puede ser nula.");
