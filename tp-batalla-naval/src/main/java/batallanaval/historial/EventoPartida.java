@@ -9,6 +9,7 @@ import java.util.Objects;
  */
 public record EventoPartida(int ronda, int numeroJugador, TipoEvento tipo,
                             String descripcion, LocalDateTime momento) {
+
     /**
      * Crea un evento validando que tipo, descripcion y momento no sean nulos.
      *
