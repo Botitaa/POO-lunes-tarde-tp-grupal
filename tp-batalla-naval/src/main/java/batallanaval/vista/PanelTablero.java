@@ -1,6 +1,7 @@
 package batallanaval.vista;
 
 import batallanaval.modelo.Posicion;
+import batallanaval.modelo.Casilla;
 
 import javax.swing.JPanel;
 import java.awt.BasicStroke;
@@ -14,109 +15,151 @@ import java.awt.event.MouseMotionListener;
 
 /**
  * Panel que extiende de JPanel para representar la grilla de 10x10 del tablero de Batalla Naval.
- * Implementa MouseListener y MouseMotionListener para traducir clics a Posicion 
- * y resaltar la casilla bajo el cursor.
+ * Implementa la visualización de cada tipo de casilla y la zona de dominación.
  */
 public class PanelTablero extends JPanel implements MouseListener, MouseMotionListener {
 
     private static final int FILAS = 10;
     private static final int COLUMNAS = 10;
 
-    // Guarda la posición de la celda sobre la cual está el mouse actualmente (efecto hover)
+    // Guarda la posición de la celda sobre la cual está el mouse actualmente
     private Posicion casillaHover = null;
 
     /**
      * Constructor por defecto del panel del tablero.
-     * Configura el fondo y registra los listeners del mouse en este componente.
      */
     public PanelTablero() {
         setBackground(Color.DARK_GRAY);
-        
-        // Registramos los listeners para escuchar las acciones del mouse
+
+        // Registramos los listeners para las acciones del mouse
         addMouseListener(this);
         addMouseMotionListener(this);
     }
 
+    /**
+     * Dibuja las casillas, la zona de dominación y el resaltado de la casilla bajo el mouse.
+     *
+     * @param g contexto gráfico que entrega Swing
+     */
     @Override
     protected void paintComponent(Graphics g) {
-        super.paintComponent(g); // Limpia y dibuja el fondo estándar
+        super.paintComponent(g);
 
         Graphics2D g2d = (Graphics2D) g;
-        // Activamos suavizado (antialiasing) para mejorar la calidad gráfica al escalar
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        int anchoPanel = getWidth();
-        int altoPanel = getHeight();
+        int tamanoCelda = calcularTamanoCelda();
+        int inicioX = calcularInicioX(tamanoCelda);
+        int inicioY = calcularInicioY(tamanoCelda);
 
-        // Calculamos dinámicamente el tamaño de cada celda para que escale con la ventana
-        int tamanoCelda = Math.min(anchoPanel / COLUMNAS, altoPanel / FILAS);
-
-        // Centramos la grilla en el panel calculando los márgenes si sobra espacio
-        int inicioX = (anchoPanel - (tamanoCelda * COLUMNAS)) / 2;
-        int inicioY = (altoPanel - (tamanoCelda * FILAS)) / 2;
-
-        // Recorremos la matriz lógica de 10x10 para dibujar cada celda
+        // Recorremos la matriz lógica de 10x10
         for (int fila = 0; fila < FILAS; fila++) {
             for (int col = 0; col < COLUMNAS; col++) {
-                Posicion pos = new Posicion(fila, col);
                 int x = inicioX + (col * tamanoCelda);
                 int y = inicioY + (fila * tamanoCelda);
 
-                // Dibujamos el relleno base de la celda (color agua preliminar)
-                g2d.setColor(new Color(51, 153, 255));
+                // Nota: Aquí se conectará con el método de consulta cuando el controlador esté integrado.
+                // Por ahora definimos una casilla por defecto (AGUA) para maquetación y pruebas visuales.
+                Casilla casilla = Casilla.AGUA;
+
+                // Asignamos el color de fondo según el tipo de casilla
+                switch (casilla) {
+                    case AGUA:
+                        g2d.setColor(new Color(51, 153, 255)); // Azul agua
+                        break;
+                    case ISLA:
+                        g2d.setColor(new Color(46, 139, 87));  // Verde isla
+                        break;
+                    case PIEDRA:
+                        g2d.setColor(new Color(112, 128, 144)); // Gris piedra
+                        break;
+                    case RESTOS:
+                        g2d.setColor(new Color(70, 70, 70));   // Fondo oscuro para restos
+                        break;
+                }
                 g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
 
-                // Dibujamos el borde negro alrededor de cada celda
-                g2d.setColor(Color.BLACK);
-                g2d.drawRect(x, y, tamanoCelda, tamanoCelda);
-
-                // Si el mouse está posicionado encima de esta celda, aplicamos el resaltado (Hover)
-                if (casillaHover != null && casillaHover.equals(pos)) {
-                    g2d.setColor(new Color(255, 255, 255, 100)); // Blanco semitransparente
-                    g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
-                    g2d.setColor(Color.WHITE);
+                // Si la casilla contiene restos de un barco hundido, dibujamos una "X" negra
+                if (casilla == Casilla.RESTOS) {
+                    g2d.setColor(Color.BLACK);
                     g2d.setStroke(new BasicStroke(2));
-                    g2d.drawRect(x, y, tamanoCelda, tamanoCelda);
-                    g2d.setStroke(new BasicStroke(1)); // Restauramos el grosor por defecto del trazo
+                    g2d.drawLine(x + 4, y + 4, x + tamanoCelda - 4, y + tamanoCelda - 4);
+                    g2d.drawLine(x + tamanoCelda - 4, y + 4, x + 4, y + tamanoCelda - 4);
                 }
+
+                // Dibujamos el borde estándar de la celda
+                g2d.setColor(Color.BLACK);
+                g2d.setStroke(new BasicStroke(1));
+                g2d.drawRect(x, y, tamanoCelda, tamanoCelda);
             }
+        }
+
+        // La zona de dominación y el hover se dibujan después del for: si se dibujaran
+        // adentro, las celdas siguientes les pintarían el borde negro encima.
+
+        // Marcamos la Zona de Dominación (las 4 casillas centrales: filas 4-5, columnas 4-5) con borde dorado
+        g2d.setColor(new Color(218, 165, 32)); // Dorado
+        g2d.setStroke(new BasicStroke(3));
+        g2d.drawRect(inicioX + 4 * tamanoCelda, inicioY + 4 * tamanoCelda, 2 * tamanoCelda, 2 * tamanoCelda);
+
+        // Efecto Hover (resaltado blanco semitransparente)
+        if (casillaHover != null) {
+            int x = inicioX + (casillaHover.getColumna() * tamanoCelda);
+            int y = inicioY + (casillaHover.getFila() * tamanoCelda);
+            g2d.setColor(new Color(255, 255, 255, 80));
+            g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
+            g2d.setColor(Color.WHITE);
+            g2d.setStroke(new BasicStroke(2));
+            g2d.drawRect(x, y, tamanoCelda, tamanoCelda);
         }
     }
 
+    // Cálculos de la grilla: los usan paintComponent y obtenerPosicionDesdeCoordenadas, así siempre coinciden
+
+    /** Tamaño de cada celda para que la grilla entre entera en el panel. */
+    private int calcularTamanoCelda() {
+        return Math.min(getWidth() / COLUMNAS, getHeight() / FILAS);
+    }
+
+    /** Margen izquierdo para que la grilla quede centrada. */
+    private int calcularInicioX(int tamanoCelda) {
+        return (getWidth() - (tamanoCelda * COLUMNAS)) / 2;
+    }
+
+    /** Margen superior para que la grilla quede centrada. */
+    private int calcularInicioY(int tamanoCelda) {
+        return (getHeight() - (tamanoCelda * FILAS)) / 2;
+    }
+
     /**
-     * Traduce las coordenadas de píxeles (pixelX, pixelY) de la pantalla a una 
-     * instancia inmutable de Posicion (fila, columna de 0 a 9).
+     * Traduce las coordenadas de píxeles de la pantalla a una Posicion (fila y columna de 0 a 9).
+     * Devuelve null si el punto cae fuera del tablero.
      */
     private Posicion obtenerPosicionDesdeCoordenadas(int pixelX, int pixelY) {
-        int anchoPanel = getWidth();
-        int altoPanel = getHeight();
-        
-        int tamanoCelda = Math.min(anchoPanel / COLUMNAS, altoPanel / FILAS);
+        int tamanoCelda = calcularTamanoCelda();
         if (tamanoCelda <= 0) return null;
 
-        int inicioX = (anchoPanel - (tamanoCelda * COLUMNAS)) / 2;
-        int inicioY = (altoPanel - (tamanoCelda * FILAS)) / 2;
+        int x = pixelX - calcularInicioX(tamanoCelda);
+        int y = pixelY - calcularInicioY(tamanoCelda);
 
-        // Restamos el margen de centrado y dividimos por el tamaño de la celda
-        int col = (pixelX - inicioX) / tamanoCelda;
-        int fila = (pixelY - inicioY) / tamanoCelda;
+        // Los negativos se descartan antes de dividir: la división entera redondea hacia el cero,
+        // así que -20 / 40 da 0 y un clic a la izquierda del tablero caería en la columna 0.
+        if (x < 0 || y < 0) return null;
 
-        // Validamos que la posición esté dentro de los límites válidos de la grilla (0 a 9)
-        if (fila >= 0 && fila < FILAS && col >= 0 && col < COLUMNAS) {
+        int col = x / tamanoCelda;
+        int fila = y / tamanoCelda;
+
+        if (fila < FILAS && col < COLUMNAS) {
             return new Posicion(fila, col);
         }
         return null;
     }
 
-    // Implementación de MouseListener (Issue #86)
-
     @Override
     public void mouseClicked(MouseEvent e) {
-        // Al hacer clic, convertimos la coordenada en una Posicion del modelo
         Posicion posClicked = obtenerPosicionDesdeCoordenadas(e.getX(), e.getY());
         if (posClicked != null) {
-            System.out.println("Clic detectado en la posición lógica: " + posClicked);
-            // Aquí se conectará luego con el controlador de la partida
+            // Aquí se conectará con la partida cuando el controlador esté integrado
         }
     }
 
@@ -131,25 +174,19 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
 
     @Override
     public void mouseExited(MouseEvent e) {
-        // Cuando el cursor sale del panel, limpiamos el hover para que no quede resaltado
         casillaHover = null;
         repaint();
     }
-
-    // Implementación de MouseMotionListener (Issue #86)
 
     @Override
     public void mouseDragged(MouseEvent e) {}
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        // Cada vez que se mueve el mouse, recalculamos sobre qué casilla está el cursor
         Posicion nuevaPos = obtenerPosicionDesdeCoordenadas(e.getX(), e.getY());
-        
-        // Si cambió de casilla, actualizamos la variable y repintamos para actualizar el gráfico
         if (casillaHover != nuevaPos && (casillaHover == null || !casillaHover.equals(nuevaPos))) {
             casillaHover = nuevaPos;
-            repaint(); 
+            repaint();
         }
     }
 }
