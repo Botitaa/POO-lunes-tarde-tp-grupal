@@ -1,5 +1,6 @@
 package batallanaval.vista;
 
+import batallanaval.controlador.Partida;
 import batallanaval.modelo.Posicion;
 import batallanaval.modelo.Casilla;
 
@@ -12,23 +13,34 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.util.Objects;
 
 /**
  * Panel que extiende de JPanel para representar la grilla de 10x10 del tablero de Batalla Naval.
  * Implementa la visualización de cada tipo de casilla y la zona de dominación.
- */
+ * Las casillas se le preguntan a la Partida: el panel no conoce el Tablero. 
+*/
+
 public class PanelTablero extends JPanel implements MouseListener, MouseMotionListener {
 
     private static final int FILAS = 10;
     private static final int COLUMNAS = 10;
 
+    
+    // Partida de la que se lee qué hay que dibujar
+    private final Partida partida;
+
     // Guarda la posición de la celda sobre la cual está el mouse actualmente
     private Posicion casillaHover = null;
 
-    /**
-     * Constructor por defecto del panel del tablero.
+     /**
+     * Crea el panel del tablero.
+     *
+     * @param partida partida de la que se leen las casillas.
+     * @throws NullPointerException si la partida es nula.
      */
-    public PanelTablero() {
+    public PanelTablero(Partida partida) {
+        this.partida = Objects.requireNonNull(partida, "La partida no puede ser nula.");
         setBackground(Color.DARK_GRAY);
 
         // Registramos los listeners para las acciones del mouse
@@ -55,12 +67,12 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         // Recorremos la matriz lógica de 10x10
         for (int fila = 0; fila < FILAS; fila++) {
             for (int col = 0; col < COLUMNAS; col++) {
+                Posicion pos = new Posicion(fila, col);
                 int x = inicioX + (col * tamanoCelda);
                 int y = inicioY + (fila * tamanoCelda);
 
-                // Nota: Aquí se conectará con el método de consulta cuando el controlador esté integrado.
-                // Por ahora definimos una casilla por defecto (AGUA) para maquetación y pruebas visuales.
-                Casilla casilla = Casilla.AGUA;
+                // Le preguntamos a la partida qué casilla hay en esta posición
+                Casilla casilla = partida.getCasilla(pos);
 
                 // Asignamos el color de fondo según el tipo de casilla
                 switch (casilla) {
