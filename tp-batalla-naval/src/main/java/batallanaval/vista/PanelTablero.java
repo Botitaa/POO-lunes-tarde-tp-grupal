@@ -17,23 +17,30 @@ import java.util.Objects;
 
 /**
  * Panel que extiende de JPanel para representar la grilla de 10x10 del tablero de Batalla Naval.
- * Implementa la visualización de cada tipo de casilla y la zona de dominación.
- * Las casillas se le preguntan a la Partida: el panel no conoce el Tablero. 
-*/
-
+ * Dibuja cada tipo de casilla, las zonas de despliegue y la zona de dominación.
+ * Las casillas se le preguntan a la Partida: el panel no conoce el Tablero.
+ */
 public class PanelTablero extends JPanel implements MouseListener, MouseMotionListener {
 
     private static final int FILAS = 10;
     private static final int COLUMNAS = 10;
 
-    
+    // Zonas del mapa estándar (las mismas que usa Tablero). La vista no puede
+    // preguntarle a Tablero, por eso se repiten acá: solo se usan para dibujar,
+    // la validación real del despliegue la hace GestorPartida con Tablero.
+    private static final int ULTIMA_FILA_DESPLIEGUE_J1 = 2;
+    private static final int PRIMERA_FILA_DESPLIEGUE_J2 = 7;
+    private static final int PRIMERA_FILA_DOMINACION = 4;
+    private static final int PRIMERA_COLUMNA_DOMINACION = 4;
+    private static final int TAMANO_DOMINACION = 2; // la zona de dominación es de 2x2 casillas
+
     // Partida de la que se lee qué hay que dibujar
     private final Partida partida;
 
     // Guarda la posición de la celda sobre la cual está el mouse actualmente
     private Posicion casillaHover = null;
 
-     /**
+    /**
      * Crea el panel del tablero.
      *
      * @param partida partida de la que se leen las casillas.
@@ -49,7 +56,8 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     }
 
     /**
-     * Dibuja las casillas, la zona de dominación y el resaltado de la casilla bajo el mouse.
+     * Dibuja las casillas, las zonas de despliegue, la zona de dominación
+     * y el resaltado de la casilla bajo el mouse.
      *
      * @param g contexto gráfico que entrega Swing
      */
@@ -99,6 +107,15 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
                     g2d.drawLine(x + tamanoCelda - 4, y + 4, x + 4, y + tamanoCelda - 4);
                 }
 
+                // Marcamos las zonas de despliegue con un tinte semitransparente del color de cada jugador
+                if (fila <= ULTIMA_FILA_DESPLIEGUE_J1) {
+                    g2d.setColor(new Color(230, 90, 50, 50));  // Naranja: jugador 1
+                    g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
+                } else if (fila >= PRIMERA_FILA_DESPLIEGUE_J2) {
+                    g2d.setColor(new Color(170, 80, 220, 50)); // Violeta: jugador 2
+                    g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
+                }
+
                 // Dibujamos el borde estándar de la celda
                 g2d.setColor(Color.BLACK);
                 g2d.setStroke(new BasicStroke(1));
@@ -109,10 +126,12 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         // La zona de dominación y el hover se dibujan después del for: si se dibujaran
         // adentro, las celdas siguientes les pintarían el borde negro encima.
 
-        // Marcamos la Zona de Dominación (las 4 casillas centrales: filas 4-5, columnas 4-5) con borde dorado
+        // Marcamos la Zona de Dominación (las 4 casillas centrales) con un borde dorado
         g2d.setColor(new Color(218, 165, 32)); // Dorado
         g2d.setStroke(new BasicStroke(3));
-        g2d.drawRect(inicioX + 4 * tamanoCelda, inicioY + 4 * tamanoCelda, 2 * tamanoCelda, 2 * tamanoCelda);
+        g2d.drawRect(inicioX + PRIMERA_COLUMNA_DOMINACION * tamanoCelda,
+                inicioY + PRIMERA_FILA_DOMINACION * tamanoCelda,
+                TAMANO_DOMINACION * tamanoCelda, TAMANO_DOMINACION * tamanoCelda);
 
         // Efecto Hover (resaltado blanco semitransparente)
         if (casillaHover != null) {
