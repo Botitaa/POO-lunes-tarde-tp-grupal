@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import batallanaval.excepciones.MapaInvalidoException;
 import org.junit.jupiter.api.Test;
+import java.util.List;
 
 class TableroTest {
 
@@ -423,4 +424,104 @@ class TableroTest {
         assertFalse(tablero.esZonaDominacion(new Posicion(-1, 4)));
         assertFalse(tablero.esZonaDominacion(new Posicion(4, 10)));
     }
+    // ---------- getVecinos ----------
+
+    @Test
+    void enElMedioConTodoAguaTiene8Vecinos() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(4, 4));
+        assertEquals(8, vecinos.size());
+    }
+
+    @Test
+    void devuelveLasOchoCasillasAdyacentes() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(4, 4));
+        assertTrue(vecinos.contains(new Posicion(3, 3))); // arriba a la izquierda
+        assertTrue(vecinos.contains(new Posicion(3, 4))); // arriba
+        assertTrue(vecinos.contains(new Posicion(3, 5))); // arriba a la derecha
+        assertTrue(vecinos.contains(new Posicion(4, 3))); // izquierda
+        assertTrue(vecinos.contains(new Posicion(4, 5))); // derecha
+        assertTrue(vecinos.contains(new Posicion(5, 3))); // abajo a la izquierda
+        assertTrue(vecinos.contains(new Posicion(5, 4))); // abajo
+        assertTrue(vecinos.contains(new Posicion(5, 5))); // abajo a la derecha
+    }
+
+    @Test
+    void noIncluyeLaPropiaPosicion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(4, 4));
+        assertFalse(vecinos.contains(new Posicion(4, 4)));
+    }
+
+    @Test
+    void enLaEsquinaSuperiorIzquierdaTiene3Vecinos() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(0, 0));
+        assertEquals(3, vecinos.size());
+        assertTrue(vecinos.contains(new Posicion(0, 1)));
+        assertTrue(vecinos.contains(new Posicion(1, 0)));
+        assertTrue(vecinos.contains(new Posicion(1, 1)));
+    }
+
+    @Test
+    void enLaEsquinaInferiorDerechaTiene3Vecinos() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertEquals(3, tablero.getVecinos(new Posicion(9, 9)).size());
+    }
+
+    @Test
+    void enUnBordeTiene5Vecinos() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertEquals(5, tablero.getVecinos(new Posicion(0, 5)).size()); // borde de arriba
+        assertEquals(5, tablero.getVecinos(new Posicion(5, 9)).size()); // borde derecho
+    }
+
+    @Test
+    void noIncluyeIslasNiPiedras() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.ISLA;
+        grilla[5][4] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(4, 4));
+
+        assertEquals(6, vecinos.size());
+        assertFalse(vecinos.contains(new Posicion(4, 5)));
+        assertFalse(vecinos.contains(new Posicion(5, 4)));
+    }
+
+    @Test
+    void incluyeLosRestos() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.RESTOS;
+        Tablero tablero = new Tablero(grilla);
+
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(4, 4));
+
+        assertEquals(8, vecinos.size());
+        assertTrue(vecinos.contains(new Posicion(4, 5)));
+    }
+
+    @Test
+    void enElMapaEstandarNoDevuelveLasIslasDeAlLado() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(3, 1));
+
+        assertFalse(vecinos.contains(new Posicion(3, 2))); // isla
+        assertFalse(vecinos.contains(new Posicion(4, 2))); // isla
+        assertEquals(6, vecinos.size());
+    }
+
+    @Test
+    void posicionFueraDelTableroLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.getVecinos(new Posicion(10, 0));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
 }
