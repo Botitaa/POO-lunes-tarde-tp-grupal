@@ -524,4 +524,126 @@ class TableroTest {
         }
     }
 
+    // ---------- esDiagonalBloqueada ----------
+    // Se usa una grilla de agua con dos obstáculos en (4,5) y (5,4).
+    // Esas dos casillas son las esquinas del cuadrado entre (4,4) y (5,5),
+    // y también entre (4,5)-(5,4) visto desde las otras dos diagonales.
+
+    /** Grilla de agua con obstáculos en (4,5) y (5,4): bloquean la diagonal (4,4)-(5,5). */
+    private Tablero crearTableroConDiagonalBloqueada(Casilla obstaculo1, Casilla obstaculo2) {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = obstaculo1;
+        grilla[5][4] = obstaculo2;
+        return new Tablero(grilla);
+    }
+
+    @Test
+    void diagonalHaciaAbajoALaDerechaEntreDosObstaculosEstaBloqueada() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.ISLA, Casilla.ISLA);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5))); // ↘
+    }
+
+    @Test
+    void diagonalHaciaArribaALaIzquierdaEntreDosObstaculosEstaBloqueada() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.ISLA, Casilla.ISLA);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(5, 5), new Posicion(4, 4))); // ↖
+    }
+
+    @Test
+    void diagonalHaciaArribaALaDerechaEntreDosObstaculosEstaBloqueada() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][4] = Casilla.PIEDRA; // esquinas entre (5,4) y (4,5)
+        grilla[5][5] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(5, 4), new Posicion(4, 5))); // ↗
+    }
+
+    @Test
+    void diagonalHaciaAbajoALaIzquierdaEntreDosObstaculosEstaBloqueada() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][4] = Casilla.PIEDRA;
+        grilla[5][5] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(4, 5), new Posicion(5, 4))); // ↙
+    }
+
+    @Test
+    void unaIslaYUnaPiedraTambienBloquean() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.ISLA, Casilla.PIEDRA);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5)));
+    }
+
+    @Test
+    void conUnSoloObstaculoLaDiagonalEstaLibre() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.ISLA, Casilla.AGUA);
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5)));
+    }
+
+    @Test
+    void conElOtroObstaculoSoloTambienEstaLibre() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.AGUA, Casilla.PIEDRA);
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5)));
+    }
+
+    @Test
+    void sinObstaculosLaDiagonalEstaLibre() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5)));
+    }
+
+    @Test
+    void losRestosNoBloqueanLaDiagonal() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.RESTOS, Casilla.RESTOS);
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5)));
+    }
+
+    @Test
+    void unMovimientoRectoNuncaEstaBloqueadoPorDiagonal() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.ISLA, Casilla.ISLA);
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(3, 4))); // arriba
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(4, 3))); // izquierda
+    }
+
+    @Test
+    void enElBordeDelTableroFunciona() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[3][0] = Casilla.ISLA;
+        grilla[4][1] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(3, 1), new Posicion(4, 0)));
+    }
+
+    @Test
+    void posicionesNoVecinasLanzanExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.esDiagonalBloqueada(new Posicion(0, 0), new Posicion(2, 2));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void laMismaPosicionLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(4, 4));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void diagonalConPosicionFueraDelTableroLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.esDiagonalBloqueada(new Posicion(9, 9), new Posicion(10, 10));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
 }

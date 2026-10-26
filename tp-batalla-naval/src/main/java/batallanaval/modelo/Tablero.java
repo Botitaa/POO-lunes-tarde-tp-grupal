@@ -140,5 +140,21 @@ public class Tablero {
         }
         return vecinos;
     }
+    public boolean esDiagonalBloqueada(Posicion desde, Posicion hasta) {
+        if (!estaDentro(desde) || !estaDentro(hasta)) {
+            throw new IllegalArgumentException("Una de las posiciones está fuera del tablero");
+        }
+        if (desde.distanciaChebyshev(hasta) != 1) {
+            throw new IllegalArgumentException("Las posiciones" + desde + " y " + hasta + " no son adyacentes");
+        }
+        boolean esDiagonal = desde.getFila() != hasta.getFila() && desde.getColumna() != hasta.getColumna();
+        if (!esDiagonal) {
+            return false; }
+        Casilla esquina1 = getCasilla(desde.getFila(), hasta.getColumna());
+        Casilla esquina2 = getCasilla(hasta.getFila(), desde.getColumna());
+        return esquina1.bloqueaPaso() && esquina2.bloqueaPaso();
+    }
+
+
 
 }
