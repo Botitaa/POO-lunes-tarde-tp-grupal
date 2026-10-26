@@ -2,6 +2,9 @@ package batallanaval.modelo;
 
 import batallanaval.excepciones.MapaInvalidoException;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Tablero {
     public static final int FILAS = 10;
     public static final int COLUMNAS = 10;
@@ -119,6 +122,23 @@ public class Tablero {
     public boolean esZonaDominacion(Posicion pos) {
         return pos.getFila() >= PRIMERA_FILA_DOMINACION && pos.getFila() <= ULTIMA_FILA_DOMINACION &&
                pos.getColumna() >= PRIMERA_COLUMNA_DOMINACION && pos.getColumna() <= ULTIMA_COLUMNA_DOMINACION;
+    }
+
+    public List<Posicion> getVecinos(Posicion pos) {
+        if (!estaDentro(pos)) {
+            throw new IllegalArgumentException("La posición " + pos + " está fuera del tablero");
+        }
+        List<Posicion> vecinos = new ArrayList<>();
+        for (int fila = pos.getFila() - 1; fila <= pos.getFila() + 1; fila++) {
+            for (int columna = pos.getColumna() - 1; columna <= pos.getColumna() + 1; columna++) {
+                Posicion vecina = new Posicion(fila, columna);
+                boolean esLaMismaPosicion = fila == pos.getFila() && columna == pos.getColumna();
+                if (!esLaMismaPosicion && esTransitable(vecina)) {
+                    vecinos.add(vecina);
+                }
+            }
+        }
+        return vecinos;
     }
 
 }
