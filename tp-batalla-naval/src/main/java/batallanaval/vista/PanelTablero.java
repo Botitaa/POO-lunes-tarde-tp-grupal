@@ -1,5 +1,6 @@
 package batallanaval.vista;
 
+import batallanaval.controlador.PartidaTablero;
 import batallanaval.modelo.Posicion;
 import batallanaval.modelo.Casilla;
 
@@ -12,23 +13,32 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.util.Objects;
 
 /**
  * Panel que extiende de JPanel para representar la grilla de 10x10 del tablero de Batalla Naval.
- * Implementa la visualización de cada tipo de casilla y la zona de dominación.
+ * Dibuja cada tipo de casilla, las zonas de despliegue y la zona de dominación.
+ * Todo lo que dibuja se lo pregunta a PartidaTablero: el panel no conoce el Tablero.
  */
 public class PanelTablero extends JPanel implements MouseListener, MouseMotionListener {
 
     private static final int FILAS = 10;
     private static final int COLUMNAS = 10;
 
+    // Parte de la partida que necesita el panel para dibujar (ISP: no recibe la Partida entera)
+    private final PartidaTablero partidaTablero;
+
     // Guarda la posición de la celda sobre la cual está el mouse actualmente
     private Posicion casillaHover = null;
 
     /**
-     * Constructor por defecto del panel del tablero.
+     * Crea el panel del tablero.
+     *
+     * @param partidaTablero consultas de la partida de las que se leen las casillas y las zonas.
+     * @throws NullPointerException si partidaTablero es nulo.
      */
-    public PanelTablero() {
+    public PanelTablero(PartidaTablero partidaTablero) {
+        this.partidaTablero = Objects.requireNonNull(partidaTablero, "La partida no puede ser nula.");
         setBackground(Color.DARK_GRAY);
 
         // Registramos los listeners para las acciones del mouse
@@ -37,7 +47,8 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     }
 
     /**
-     * Dibuja las casillas, la zona de dominación y el resaltado de la casilla bajo el mouse.
+     * Dibuja las casillas, las zonas de despliegue, la zona de dominación
+     * y el resaltado de la casilla bajo el mouse.
      *
      * @param g contexto gráfico que entrega Swing
      */
@@ -52,15 +63,21 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         int inicioX = calcularInicioX(tamanoCelda);
         int inicioY = calcularInicioY(tamanoCelda);
 
+        // Límites de la zona de dominación: se completan mientras se recorre la grilla
+        int filaMinDominacion = FILAS;
+        int filaMaxDominacion = -1;
+        int colMinDominacion = COLUMNAS;
+        int colMaxDominacion = -1;
+
         // Recorremos la matriz lógica de 10x10
         for (int fila = 0; fila < FILAS; fila++) {
             for (int col = 0; col < COLUMNAS; col++) {
+                Posicion pos = new Posicion(fila, col);
                 int x = inicioX + (col * tamanoCelda);
                 int y = inicioY + (fila * tamanoCelda);
 
-                // Nota: Aquí se conectará con el método de consulta cuando el controlador esté integrado.
-                // Por ahora definimos una casilla por defecto (AGUA) para maquetación y pruebas visuales.
-                Casilla casilla = Casilla.AGUA;
+                // Le preguntamos a la partida qué casilla hay en esta posición
+                Casilla casilla = partidaTablero.getCasilla(pos);
 
                 // Asignamos el color de fondo según el tipo de casilla
                 switch (casilla) {
@@ -87,6 +104,23 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
                     g2d.drawLine(x + tamanoCelda - 4, y + 4, x + 4, y + tamanoCelda - 4);
                 }
 
+                // Marcamos las zonas de despliegue con un tinte semitransparente del color de cada jugador
+                if (partidaTablero.esZonaDespliegue(pos, 1)) {
+                    g2d.setColor(new Color(230, 90, 50, 50));  // Naranja: jugador 1
+                    g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
+                } else if (partidaTablero.esZonaDespliegue(pos, 2)) {
+                    g2d.setColor(new Color(170, 80, 220, 50)); // Violeta: jugador 2
+                    g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
+                }
+
+                // Si la casilla es de la zona de dominación, actualizamos sus límites
+                if (partidaTablero.esZonaDominacion(pos)) {
+                    filaMinDominacion = Math.min(filaMinDominacion, fila);
+                    filaMaxDominacion = Math.max(filaMaxDominacion, fila);
+                    colMinDominacion = Math.min(colMinDominacion, col);
+                    colMaxDominacion = Math.max(colMaxDominacion, col);
+                }
+
                 // Dibujamos el borde estándar de la celda
                 g2d.setColor(Color.BLACK);
                 g2d.setStroke(new BasicStroke(1));
@@ -97,10 +131,16 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         // La zona de dominación y el hover se dibujan después del for: si se dibujaran
         // adentro, las celdas siguientes les pintarían el borde negro encima.
 
-        // Marcamos la Zona de Dominación (las 4 casillas centrales: filas 4-5, columnas 4-5) con borde dorado
-        g2d.setColor(new Color(218, 165, 32)); // Dorado
-        g2d.setStroke(new BasicStroke(3));
-        g2d.drawRect(inicioX + 4 * tamanoCelda, inicioY + 4 * tamanoCelda, 2 * tamanoCelda, 2 * tamanoCelda);
+        // Marcamos la zona de dominación con un solo borde dorado alrededor de todas sus casillas
+        if (filaMaxDominacion >= 0) {
+            int x = inicioX + (colMinDominacion * tamanoCelda);
+            int y = inicioY + (filaMinDominacion * tamanoCelda);
+            int ancho = (colMaxDominacion - colMinDominacion + 1) * tamanoCelda;
+            int alto = (filaMaxDominacion - filaMinDominacion + 1) * tamanoCelda;
+            g2d.setColor(new Color(218, 165, 32)); // Dorado
+            g2d.setStroke(new BasicStroke(3));
+            g2d.drawRect(x, y, ancho, alto);
+        }
 
         // Efecto Hover (resaltado blanco semitransparente)
         if (casillaHover != null) {

@@ -233,4 +233,14 @@ public class GestorPartida implements Partida {
     public List<EstadoBarco> getObjetivosValidos() {
         throw new UnsupportedOperationException("Pendiente: PAR-09 (#54)");
     }
+
+    @Override
+    public boolean esZonaDespliegue(Posicion posicion, int numeroJugador) {
+        return tablero.esZonaDespliegue(posicion,numeroJugador);
+    }
+
+    @Override
+    public boolean esZonaDominacion(Posicion posicion) {
+        return tablero.esZonaDominacion(posicion);
+    }
 }

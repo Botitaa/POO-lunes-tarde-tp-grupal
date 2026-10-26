@@ -17,5 +17,7 @@ public interface PartidaTablero {
     int getCostoRuta();
     Set<Posicion> getCasillasAlcanzables();
     List<EstadoBarco> getObjetivosValidos();
+    boolean esZonaDespliegue(Posicion posicion, int numeroJugador);
+    boolean esZonaDominacion(Posicion posicion);
 
 }
