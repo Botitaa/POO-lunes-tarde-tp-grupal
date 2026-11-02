@@ -1,10 +1,14 @@
 package batallanaval.vista;
 
+import batallanaval.controlador.FasePartida;
+import batallanaval.controlador.ObservadorPartida;
 import batallanaval.controlador.PartidaTablero;
+import batallanaval.controlador.ResultadoPartida;
 import batallanaval.modelo.Posicion;
 import batallanaval.modelo.Casilla;
 
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -19,8 +23,10 @@ import java.util.Objects;
  * Panel que extiende de JPanel para representar la grilla de 10x10 del tablero de Batalla Naval.
  * Dibuja cada tipo de casilla, las zonas de despliegue y la zona de dominación.
  * Todo lo que dibuja se lo pregunta a PartidaTablero: el panel no conoce el Tablero.
+ * Implementa ObservadorPartida: quien crea el panel lo registra en la partida con
+ * agregarObservador, y desde ahí el panel se redibuja ante cada cambio.
  */
-public class PanelTablero extends JPanel implements MouseListener, MouseMotionListener {
+public class PanelTablero extends JPanel implements MouseListener, MouseMotionListener, ObservadorPartida {
 
     private static final int FILAS = 10;
     private static final int COLUMNAS = 10;
@@ -194,6 +200,57 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         }
         return null;
     }
+
+    // Implementación de ObservadorPartida 
+
+    /**
+     * La partida avisa que cambió algo (un movimiento, un disparo, una selección): se redibuja el tablero.
+     */
+    @Override
+    public void onEstadoCambiado() {
+        repintarEnEdt();
+    }
+
+    /**
+     * La partida cambió de fase (por ejemplo, del despliegue al juego): se redibuja el tablero.
+     *
+     * @param fasePartida fase nueva.
+     */
+    @Override
+    public void onFaseCambiada(FasePartida fasePartida) {
+        repintarEnEdt();
+    }
+
+    /**
+     * Empezó el turno de otro jugador: se redibuja porque cambia lo que se ve del tablero.
+     *
+     * @param nombreJugador nombre del jugador que empieza el turno.
+     */
+    @Override
+    public void onTurnoIniciado(String nombreJugador) {
+        repintarEnEdt();
+    }
+
+    /**
+     * La partida terminó: se redibuja para mostrar el estado final.
+     *
+     * @param resultadoPartida resultado de la partida.
+     */
+    @Override
+    public void onPartidaTerminada(ResultadoPartida resultadoPartida) {
+        repintarEnEdt();
+    }
+
+    /**
+     * Pide el repintado en el hilo de eventos de Swing (EDT). Los componentes Swing solo
+     * se deben tocar desde ese hilo, y la partida podría avisar desde otro (por ejemplo,
+     * después de cargar una partida en un Thread aparte).
+     */
+    private void repintarEnEdt() {
+        SwingUtilities.invokeLater(() -> repaint());
+    }
+
+    // Implementación de MouseListener
 
     @Override
     public void mouseClicked(MouseEvent e) {
