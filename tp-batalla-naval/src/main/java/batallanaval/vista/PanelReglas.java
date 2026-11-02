@@ -32,6 +32,8 @@ public final class PanelReglas extends JPanel {
             TABLERO
             - Es de 10x10. Las filas 0 a 2 son la zona de despliegue del Jugador 1 y las filas 7 a 9 \
             la del Jugador 2. Las filas 3 a 6 son la zona neutral, donde están los obstáculos.
+            - El mapa es simétrico respecto del centro (en espejo), así que es parejo para los dos \
+            jugadores.
             - La zona de dominación son las 4 casillas centrales (filas 4 y 5, columnas 4 y 5). \
             Siempre es agua.
             - Agua: se puede pasar y se ve a través.
@@ -40,6 +42,9 @@ public final class PanelReglas extends JPanel {
             - Restos: es donde se hundió un barco; se puede pasar.
             - Los barcos bloquean el paso, pero no la visión ni los disparos.
             - Todas las distancias se miden en casillas, y una diagonal cuenta como un solo paso.
+            - Diagonales: si las dos casillas ortogonales de una diagonal bloquean, la diagonal \
+            también queda bloqueada (para el paso o para la visión, según el tipo de obstáculo). \
+            Si bloquea solo una de las dos, la diagonal está libre.
 
             BARCOS
             Cada jugador tiene 1 Acorazado, 2 Cruceros y 3 Destructores. Cada barco ocupa 1 casilla.
@@ -63,7 +68,7 @@ public final class PanelReglas extends JPanel {
             1. Al volver del blackout se muestra un resumen de lo que hizo el rival: los disparos \
             recibidos (con el daño y de dónde vinieron) y los barcos propios hundidos.
             2. Se reponen 6 puntos de movimiento para toda la flota (no se acumulan) y bajan en 1 \
-            las esperas de disparo.
+            los tiempos de espera.
             3. Se activan los barcos de a uno, en el orden que se quiera: primero mover y después \
             disparar, y las dos cosas son opcionales. Un barco que disparó ya no puede moverse.
             4. Con "Terminar turno" la pantalla se oscurece (blackout) y el otro jugador toca \
@@ -71,7 +76,7 @@ public final class PanelReglas extends JPanel {
 
             MOVIMIENTO
             - Se avanza paso a paso a una de las 8 casillas vecinas, solo hacia agua o restos libres \
-            y sin salir del tablero.
+            y sin salir del tablero. No se puede pasar por una diagonal bloqueada.
             - Primero se planifica la ruta (se puede deshacer paso a paso) y después se confirma. \
             Mientras se planifica, la niebla no cambia.
             - Si al confirmar la ruta aparece un enemigo oculto, el barco frena en el paso anterior, \
@@ -90,6 +95,8 @@ public final class PanelReglas extends JPanel {
             VISIÓN Y NIEBLA
             - Una casilla es visible si algún barco propio vivo está dentro de su visión y tiene \
             línea de visión hacia ella.
+            - Línea de visión: se traza una línea recta entre los centros de las dos casillas. Si \
+            alguna casilla del medio es isla, no hay visión; las casillas de los extremos no cuentan.
             - La visión se comparte: si un barco ve a un enemigo, cualquier barco propio puede \
             dispararle si cumple su propio rango y línea de visión.
             - El barco que dispara queda visible para el rival durante todo el turno siguiente de \
