@@ -25,93 +25,76 @@ public final class PanelReglas extends JPanel {
     private static final long serialVersionUID = 1L;
 
     private static final String TEXTO_REGLAS = """
-            OBJETIVO
-            Dos jugadores comparten la misma computadora y se turnan. Cada uno comanda una flota de \
-            6 barcos. Gana quien hunde toda la flota rival o quien domina el centro del mapa.
+            Tablero
+            - 10x10. Filas 0–2: despliegue J1. Filas 3–6: zona neutral (único lugar con obstáculos). Filas \
+            7–9: despliegue J2.
+            - Zona de dominación: las 4 casillas centrales (filas 4–5, columnas 4–5), siempre agua.
+            - Mapas en espejo (simetría punto a punto respecto del centro). El MVP tiene un solo mapa.
 
-            TABLERO
-            - Es de 10x10. Las filas 0 a 2 son la zona de despliegue del Jugador 1 y las filas 7 a 9 \
-            la del Jugador 2. Las filas 3 a 6 son la zona neutral, donde están los obstáculos.
-            - El mapa es simétrico respecto del centro (en espejo), así que es parejo para los dos \
-            jugadores.
-            - La zona de dominación son las 4 casillas centrales (filas 4 y 5, columnas 4 y 5). \
-            Siempre es agua.
-            - Agua: se puede pasar y se ve a través.
-            - Piedra: bloquea el paso, pero no la visión.
-            - Isla: bloquea el paso y la visión.
-            - Restos: es donde se hundió un barco; se puede pasar.
+            - AGUA: Bloquea paso: No; Bloquea visión: No
+            - PIEDRA: Bloquea paso: Sí; Bloquea visión: No
+            - ISLA: Bloquea paso: Sí; Bloquea visión: Sí
+            - RESTOS (barco hundido): Bloquea paso: No; Bloquea visión: No
+
             - Los barcos bloquean el paso, pero no la visión ni los disparos.
-            - Todas las distancias se miden en casillas, y una diagonal cuenta como un solo paso.
-            - Diagonales: si las dos casillas ortogonales de una diagonal bloquean, la diagonal \
-            también queda bloqueada (para el paso o para la visión, según el tipo de obstáculo). \
-            Si bloquea solo una de las dos, la diagonal está libre.
+            - Diagonal entre dos casillas ortogonales que bloquean → la diagonal también bloquea (paso o \
+            visión según el tipo). Si bloquea solo una, está libre.
+            - Todas las distancias son de Chebyshev: max(|f1-f2|, |c1-c2|).
 
-            BARCOS
-            Cada jugador tiene 1 Acorazado, 2 Cruceros y 3 Destructores. Cada barco ocupa 1 casilla.
-            - Destructor: vida 3, daño 3, rango 2, visión 2. Se mueve hasta 4 casillas por turno y \
-            cada casilla cuesta 1 punto. Dispara todos los turnos.
-            - Crucero: vida 5, daño 2, rango 4, visión 3. Se mueve hasta 3 casillas por turno y cada \
-            casilla cuesta 2 puntos. Dispara todos los turnos.
-            - Acorazado: vida 8, daño 4, rango 6, visión 5. Se mueve hasta 2 casillas por turno y \
-            cada casilla cuesta 3 puntos. Después de disparar tiene que esperar 1 turno.
+            Barcos (cada jugador: 1 acorazado, 2 cruceros, 3 destructores; cada barco ocupa 1 casilla)
 
-            HABILIDADES
-            - Destructor: hace daño doble (6) en ese turno.
-            - Crucero: se repara 2 puntos de vida, sin pasar de su vida máxima.
-            - Acorazado: su rango sube a 8 en ese turno.
-            Se activan con un botón, una vez por turno. No cuestan puntos de movimiento, no impiden \
-            moverse y duran hasta el fin del turno. Después hay que esperar 3 turnos para volver a \
-            usarlas (si se usa en el turno 1, vuelve a estar disponible en el 4). No revelan al \
-            barco. Hay que activarlas antes de disparar para que afecten al disparo.
+            - Destructor: Vida: 3; Costo por casilla (puntos): 1; Máx. casillas por turno: 4; Rango de \
+            disparo: 2; Visión: 2; Daño: 3; Cooldown de disparo (turnos): 0; Habilidad: Daño doble (6) este \
+            turno
+            - Crucero: Vida: 5; Costo por casilla (puntos): 2; Máx. casillas por turno: 3; Rango de disparo: \
+            4; Visión: 3; Daño: 2; Cooldown de disparo (turnos): 0; Habilidad: Se repara 2 (sin pasar la \
+            vida máx.)
+            - Acorazado: Vida: 8; Costo por casilla (puntos): 3; Máx. casillas por turno: 2; Rango de \
+            disparo: 6; Visión: 5; Daño: 4; Cooldown de disparo (turnos): 1; Habilidad: Rango 8 este turno
 
-            CÓMO ES UN TURNO
-            1. Al volver del blackout se muestra un resumen de lo que hizo el rival: los disparos \
-            recibidos (con el daño y de dónde vinieron) y los barcos propios hundidos.
-            2. Se reponen 6 puntos de movimiento para toda la flota (no se acumulan) y bajan en 1 \
-            los tiempos de espera.
-            3. Se activan los barcos de a uno, en el orden que se quiera: primero mover y después \
-            disparar, y las dos cosas son opcionales. Un barco que disparó ya no puede moverse.
-            4. Con "Terminar turno" la pantalla se oscurece (blackout) y el otro jugador toca \
-            "Listo" para empezar el suyo.
+            - Habilidades: se activan con un botón, una vez por turno, no cuestan puntos, no impiden \
+            moverse, duran hasta el fin del turno, espera de 3 turnos (usada en el turno 1 → disponible en \
+            el 4), no revelan al barco. Hay que activarlas antes de disparar para que afecten el disparo.
 
-            MOVIMIENTO
-            - Se avanza paso a paso a una de las 8 casillas vecinas, solo hacia agua o restos libres \
-            y sin salir del tablero. No se puede pasar por una diagonal bloqueada.
-            - Primero se planifica la ruta (se puede deshacer paso a paso) y después se confirma. \
-            Mientras se planifica, la niebla no cambia.
-            - Si al confirmar la ruta aparece un enemigo oculto, el barco frena en el paso anterior, \
-            solo se cobran los pasos hechos y el enemigo queda revelado hasta que termine el turno. \
-            El rival no se entera.
+            Turno
+            1. Al volver del blackout: resumen de lo que hizo el rival (disparos recibidos con daño y \
+            origen, barcos propios hundidos).
+            2. Se reponen 6 puntos de movimiento para toda la flota (no se acumulan) y bajan en 1 los \
+            cooldowns.
+            3. El jugador activa sus barcos de a uno en el orden que quiera: primero mover, después disparar \
+            (ambos opcionales). Un barco que disparó no puede moverse.
+            4. "Terminar turno" → blackout → el otro toca "Listo".
 
-            DISPARO
-            Se dispara una vez por turno a un barco enemigo, siempre que:
-            - el jugador lo vea,
-            - esté dentro del rango del barco que dispara,
-            - haya línea de visión (no se dispara por encima de una isla), y
-            - el barco que dispara no esté esperando.
-            Siempre acierta. Si la vida del blanco llega a 0, se hunde y su casilla pasa a ser \
-            restos.
+            Movimiento
+            - Paso a paso a una de las 8 adyacentes. Solo a AGUA o RESTOS libres, sin salir del tablero.
+            - Se planifica la ruta (con "Deshacer paso") y después se confirma; mientras se planifica la \
+            niebla no cambia.
+            - Si al confirmar la ruta choca con un enemigo oculto: frena en el paso anterior, se cobran solo \
+            los pasos hechos, el enemigo queda revelado hasta fin del turno y el rival no se entera.
 
-            VISIÓN Y NIEBLA
-            - Una casilla es visible si algún barco propio vivo está dentro de su visión y tiene \
-            línea de visión hacia ella.
-            - Línea de visión: se traza una línea recta entre los centros de las dos casillas. Si \
-            alguna casilla del medio es isla, no hay visión; las casillas de los extremos no cuentan.
-            - La visión se comparte: si un barco ve a un enemigo, cualquier barco propio puede \
-            dispararle si cumple su propio rango y línea de visión.
-            - El barco que dispara queda visible para el rival durante todo el turno siguiente de \
-            ese rival.
-            - Los barcos que están en la zona de dominación los ven los dos jugadores.
+            Disparo
+            Una vez por turno, a un barco enemigo, si: (1) es visible para el jugador, (2) está a distancia \
+            ≤ rango, (3) hay línea de visión (no se dispara por encima de islas), (4) el tirador no está en \
+            cooldown. Siempre acierta. Vida 0 → se hunde y su casilla pasa a RESTOS.
+
+            Visión y niebla
+            - Una casilla es visible para un jugador si algún barco propio vivo está a distancia ≤ su visión \
+            y tiene línea de visión.
+            - Visión compartida: si un barco ve a un enemigo, cualquier barco propio puede dispararle (si \
+            cumple su rango y línea de visión).
+            - Línea de visión: Bresenham entre centros; si una casilla intermedia es ISLA, no hay visión. \
+            Los extremos no cuentan.
+            - Revelado por disparo: el que dispara queda visible para el rival durante todo el turno \
+            siguiente del rival.
+            - Los barcos en la zona de dominación son visibles para ambos.
             - El mapa y los restos se ven siempre.
 
-            CÓMO SE GANA
-            - Hundimiento: se hunden los 6 barcos rivales. La partida termina en el acto.
-            - Dominación: al terminar su turno, un jugador suma 1 punto si tiene al menos un barco \
-            en la zona de dominación y el rival ninguno. Con 6 puntos gana. Los puntos no se \
-            pierden.
-            - Límite de turnos: la partida dura como máximo 40 turnos por jugador. Si se llega al \
-            límite, gana quien tenga más puntos de dominación; si hay empate, quien tenga más barcos \
-            vivos; si sigue el empate, quien tenga más vida total. Si todo es igual, es empate.
+            Victoria
+            - Hundimiento: hundir los 6 barcos rivales (termina en el acto).
+            - Dominación: sumar 6 puntos. Al terminar su turno, un jugador suma 1 si tiene ≥1 barco en la \
+            zona y el rival ninguno. Los puntos no se pierden.
+            - Límite: 40 turnos por jugador. Gana más dominación → más barcos vivos → más vida total → \
+            empate.
             """;
 
     private final VentanaPrincipal ventana;
