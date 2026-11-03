@@ -46,6 +46,21 @@ public class Jugador {
         }
     }
 
+    public Jugador(int numero, String nombre, List<Barco> flota, int puntosMovimiento, int puntosDominacion, List<String> resumenPendiente) {
+        this(numero, nombre, flota);
+        this.puntosMovimiento = puntosMovimiento;
+        this.puntosDominacion = puntosDominacion;
+        if (resumenPendiente != null) {
+            for (String mensaje : resumenPendiente) {
+                this.resumen.agregarMensaje(mensaje);
+            }
+        }
+    }
+
+    public Jugador(int numero, String nombre, List<Barco> flota, int puntosMovimiento, int puntosDominacion) {
+        this(numero, nombre, flota, puntosMovimiento, puntosDominacion, List.of());
+    }
+
     public ResumenTurno getResumen() {
         return resumen;
     }

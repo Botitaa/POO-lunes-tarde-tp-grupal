@@ -2,17 +2,21 @@ package batallanaval.controlador;
 
 import batallanaval.excepciones.AccionInvalidaException;
 import batallanaval.historial.EventoPartida;
+import batallanaval.historial.HistorialPartida;
+import batallanaval.modelo.Acorazado;
 import batallanaval.modelo.Barco;
 import batallanaval.modelo.Casilla;
+import batallanaval.modelo.Crucero;
+import batallanaval.modelo.Destructor;
 import batallanaval.modelo.Jugador;
 import batallanaval.modelo.Posicion;
 import batallanaval.modelo.Tablero;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-
 
 public class GestorPartida implements Partida {
 
@@ -24,7 +28,8 @@ public class GestorPartida implements Partida {
     private final Jugador jugador2;
     private final Tablero tablero;
     private final List<ObservadorPartida> observadores;
-    // private final HistorialPartida historial;   // pendiente: issue #68 (Bruno)
+    private final HistorialPartida historial;
+    private String mapa = "estandar";
 
     private Jugador jugadorActivo;
     private FasePartida fase;
@@ -43,9 +48,26 @@ public class GestorPartida implements Partida {
         this.jugadorActivo = jugador1;
         this.fase = FasePartida.DESPLIEGUE_J1;
         this.ronda = 1;
+        this.historial = new HistorialPartida();
+        this.mapa = "estandar";
     }
 
-    // ---------- chequeo de fase ----------
+    private GestorPartida(Jugador jugador1, Jugador jugador2, Tablero tablero, String mapa,
+                          int jugadorActivoNum, int ronda, FasePartida fase, HistorialPartida historial) {
+        this.jugador1 = jugador1;
+        this.jugador2 = jugador2;
+        this.tablero = tablero;
+        this.mapa = (mapa != null && !mapa.isBlank()) ? mapa : "estandar";
+        this.observadores = new ArrayList<>();
+        this.rutaPlanificada = new ArrayList<>();
+        this.barcoSeleccionado = null;
+        this.accionRealizadaEnTurno = false;
+        this.resultado = null;
+        this.ronda = ronda;
+        this.fase = fase;
+        this.historial = (historial != null) ? historial : new HistorialPartida();
+        this.jugadorActivo = (jugadorActivoNum == 1) ? jugador1 : jugador2;
+    }
 
     private void exigirDespliegue() {
         if (fase != FasePartida.DESPLIEGUE_J1 && fase != FasePartida.DESPLIEGUE_J2) {
@@ -59,8 +81,6 @@ public class GestorPartida implements Partida {
         }
     }
 
-    // ---------- observadores ----------
-
     @Override
     public void agregarObservador(ObservadorPartida observador) {
         observadores.add(Objects.requireNonNull(observador, "El observador no puede ser nulo."));
@@ -70,8 +90,6 @@ public class GestorPartida implements Partida {
     public void quitarObservador(ObservadorPartida observador) {
         observadores.remove(observador);
     }
-
-    // ---------- PartidaDespliegue ----------
 
     @Override
     public void ubicarBarco(int idBarco, Posicion destino) {
@@ -95,8 +113,6 @@ public class GestorPartida implements Partida {
         exigirDespliegue();
         throw new UnsupportedOperationException("Pendiente: PAR-05 (#50)");
     }
-
-    // ---------- PartidaCombate ----------
 
     @Override
     public void seleccionarBarco(int id) {
@@ -140,8 +156,6 @@ public class GestorPartida implements Partida {
         throw new UnsupportedOperationException("Pendiente: PAR-06 (#51)");
     }
 
-    // ---------- PartidaConsulta ----------
-
     @Override
     public FasePartida getFase() {
         return fase;
@@ -164,7 +178,10 @@ public class GestorPartida implements Partida {
 
     @Override
     public boolean puedeGuardarse() {
-        throw new UnsupportedOperationException("Pendiente: guardado");
+        return fase == FasePartida.EN_JUEGO
+                && !accionRealizadaEnTurno
+                && (rutaPlanificada == null || rutaPlanificada.isEmpty())
+                && barcoSeleccionado == null;
     }
 
     @Override
@@ -184,10 +201,229 @@ public class GestorPartida implements Partida {
 
     @Override
     public List<EventoPartida> getHistorialVisible() {
-        throw new UnsupportedOperationException("Pendiente: LOG-08 (#69)");
+        return historial.getEventosVisiblesPara(jugadorActivo.getNumero());
     }
 
-    // ---------- PartidaTablero ----------
+    public InstantaneaPartida crearInstantanea() {
+        List<DatosJugador> datosJugadores = new ArrayList<>();
+        datosJugadores.add(new DatosJugador(
+                jugador1.getNumero(),
+                jugador1.getNombre(),
+                jugador1.getPuntosMovimiento(),
+                jugador1.getPuntosDominacion(),
+                jugador1.getResumen().getMensajes()
+        ));
+        datosJugadores.add(new DatosJugador(
+                jugador2.getNumero(),
+                jugador2.getNombre(),
+                jugador2.getPuntosMovimiento(),
+                jugador2.getPuntosDominacion(),
+                jugador2.getResumen().getMensajes()
+        ));
+
+        List<DatosBarco> datosBarcos = new ArrayList<>();
+        for (Barco barco : jugador1.getFlota()) {
+            datosBarcos.add(new DatosBarco(
+                    barco.getId(),
+                    barco.getSimbolo(),
+                    jugador1.getNumero(),
+                    barco.getPosicion(),
+                    barco.getVida(),
+                    barco.getCooldownDisparo(),
+                    barco.getCooldownHabilidad(),
+                    barco.getCasillasRestantes(),
+                    barco.estaHabilidadActiva(),
+                    barco.estaRevelado()
+            ));
+        }
+        for (Barco barco : jugador2.getFlota()) {
+            datosBarcos.add(new DatosBarco(
+                    barco.getId(),
+                    barco.getSimbolo(),
+                    jugador2.getNumero(),
+                    barco.getPosicion(),
+                    barco.getVida(),
+                    barco.getCooldownDisparo(),
+                    barco.getCooldownHabilidad(),
+                    barco.getCasillasRestantes(),
+                    barco.estaHabilidadActiva(),
+                    barco.estaRevelado()
+            ));
+        }
+
+        List<Posicion> restos = tablero.getRestos();
+        List<EventoPartida> eventos = historial.getEventos();
+
+        return new InstantaneaPartida(
+                mapa,
+                jugadorActivo.getNumero(),
+                ronda,
+                fase,
+                datosJugadores,
+                datosBarcos,
+                restos,
+                eventos
+        );
+    }
+
+    void validarEstado() {
+        if (jugador1 == null || jugador2 == null || tablero == null) {
+            throw new IllegalStateException("Estado invalido: jugadores o tablero nulos");
+        }
+        if (jugador1.getNumero() != 1 || jugador2.getNumero() != 2) {
+            throw new IllegalStateException("Estado invalido: numeros de jugador incorrectos");
+        }
+        if (jugadorActivo != jugador1 && jugadorActivo != jugador2) {
+            throw new IllegalStateException("Estado invalido: jugador activo no es ni jugador1 ni jugador2");
+        }
+        if (ronda < 1 || ronda > TURNOS_MAX) {
+            throw new IllegalStateException("Estado invalido: ronda fuera de rango: " + ronda);
+        }
+        if (fase != FasePartida.EN_JUEGO && fase != FasePartida.TERMINADA) {
+            throw new IllegalStateException("Estado invalido: la partida no puede guardarse ni restaurarse en despliegue");
+        }
+        if (jugador1.getFlota().size() != 6 || jugador2.getFlota().size() != 6) {
+            throw new IllegalStateException("Estado invalido: flota incompleta");
+        }
+        if (jugador1.getPuntosMovimiento() < 0 || jugador2.getPuntosMovimiento() < 0) {
+            throw new IllegalStateException("Estado invalido: puntos de movimiento negativos");
+        }
+        if (jugador1.getPuntosDominacion() < 0 || jugador2.getPuntosDominacion() < 0) {
+            throw new IllegalStateException("Estado invalido: puntos de dominacion negativos");
+        }
+        if (jugador1.getPuntosDominacion() > PUNTOS_DOMINACION_VICTORIA || jugador2.getPuntosDominacion() > PUNTOS_DOMINACION_VICTORIA) {
+            throw new IllegalStateException("Estado invalido: puntos de dominacion excesivos");
+        }
+
+        Set<Posicion> posicionesOcupadas = new HashSet<>();
+        List<Barco> todosLosBarcos = new ArrayList<>(jugador1.getFlota());
+        todosLosBarcos.addAll(jugador2.getFlota());
+
+        for (Barco b : todosLosBarcos) {
+            if (b.getVida() < 0 || b.getVida() > b.getVidaMaxima()) {
+                throw new IllegalStateException("Estado invalido: vida de barco fuera de rango");
+            }
+            if (b.getCooldownDisparo() < 0 || b.getCooldownHabilidad() < 0) {
+                throw new IllegalStateException("Estado invalido: cooldown negativo");
+            }
+            if (b.getCasillasRestantes() < 0 || b.getCasillasRestantes() > b.getEstadisticas().movimientoMaxPorTurno()) {
+                throw new IllegalStateException("Estado invalido: casillas restantes fuera de rango");
+            }
+            if (!b.estaHundido()) {
+                Posicion pos = b.getPosicion();
+                if (pos == null || !tablero.estaDentro(pos)) {
+                    throw new IllegalStateException("Estado invalido: barco vivo sin posicion valida dentro del tablero");
+                }
+                if (!tablero.esTransitable(pos)) {
+                    throw new IllegalStateException("Estado invalido: barco vivo sobre obstaculo");
+                }
+                if (!posicionesOcupadas.add(pos)) {
+                    throw new IllegalStateException("Estado invalido: dos barcos vivos en la misma posicion: " + pos);
+                }
+            }
+        }
+    }
+
+    public static GestorPartida restaurar(InstantaneaPartida instantanea, Tablero tablero) {
+        if (instantanea == null || tablero == null) {
+            throw new IllegalStateException("La instantanea y el tablero no pueden ser nulos");
+        }
+        if (instantanea.jugadores() == null || instantanea.jugadores().size() != 2) {
+            throw new IllegalStateException("Debe haber exactamente dos jugadores");
+        }
+        DatosJugador dj1 = null;
+        DatosJugador dj2 = null;
+        for (DatosJugador dj : instantanea.jugadores()) {
+            if (dj == null) {
+                throw new IllegalStateException("Datos de jugador nulos");
+            }
+            if (dj.numero() == 1 && dj1 == null) {
+                dj1 = dj;
+            } else if (dj.numero() == 2 && dj2 == null) {
+                dj2 = dj;
+            } else {
+                throw new IllegalStateException("Jugadores invalidos en instantanea");
+            }
+        }
+        if (dj1 == null || dj2 == null) {
+            throw new IllegalStateException("Faltan datos de jugador 1 o 2");
+        }
+        if (instantanea.barcos() == null) {
+            throw new IllegalStateException("Lista de barcos nula");
+        }
+
+        List<Barco> flotaJ1 = new ArrayList<>();
+        List<Barco> flotaJ2 = new ArrayList<>();
+
+        for (DatosBarco db : instantanea.barcos()) {
+            if (db == null) {
+                throw new IllegalStateException("Datos de barco nulos");
+            }
+            Barco barco;
+            char tipo = db.tipo();
+            if (tipo == 'A') {
+                barco = new Acorazado(db.id());
+            } else if (tipo == 'C') {
+                barco = new Crucero(db.id());
+            } else if (tipo == 'D') {
+                barco = new Destructor(db.id());
+            } else {
+                throw new IllegalStateException("Tipo de barco desconocido: " + tipo);
+            }
+            barco.restaurar(
+                    db.vida(),
+                    db.posicion(),
+                    db.cooldownDisparo(),
+                    db.cooldownHabilidad(),
+                    db.casillasRestantes(),
+                    db.habilidadActiva(),
+                    db.revelado()
+            );
+
+            if (db.jugador() == 1) {
+                flotaJ1.add(barco);
+            } else if (db.jugador() == 2) {
+                flotaJ2.add(barco);
+            } else {
+                throw new IllegalStateException("Numero de jugador invalido en barco: " + db.jugador());
+            }
+        }
+
+        Jugador j1 = new Jugador(dj1.numero(), dj1.nombre(), flotaJ1, dj1.puntosMovimiento(), dj1.puntosDominacion(), dj1.resumenPendiente());
+        Jugador j2 = new Jugador(dj2.numero(), dj2.nombre(), flotaJ2, dj2.puntosMovimiento(), dj2.puntosDominacion(), dj2.resumenPendiente());
+
+        if (instantanea.restos() != null) {
+            for (Posicion resto : instantanea.restos()) {
+                if (resto == null || !tablero.estaDentro(resto)) {
+                    throw new IllegalStateException("Resto fuera del tablero");
+                }
+                tablero.convertirEnRestos(resto);
+            }
+        }
+
+        HistorialPartida hist = new HistorialPartida();
+        if (instantanea.eventos() != null) {
+            for (EventoPartida evento : instantanea.eventos()) {
+                if (evento != null) {
+                    hist.registrar(evento);
+                }
+            }
+        }
+
+        GestorPartida partida = new GestorPartida(
+                j1,
+                j2,
+                tablero,
+                instantanea.mapa(),
+                instantanea.jugadorActivo(),
+                instantanea.ronda(),
+                instantanea.fase(),
+                hist
+        );
+
+        partida.validarEstado();
+        return partida;
+    }
 
     @Override
     public Casilla getCasilla(Posicion posicion) {
@@ -236,7 +472,7 @@ public class GestorPartida implements Partida {
 
     @Override
     public boolean esZonaDespliegue(Posicion posicion, int numeroJugador) {
-        return tablero.esZonaDespliegue(posicion,numeroJugador);
+        return tablero.esZonaDespliegue(posicion, numeroJugador);
     }
 
     @Override

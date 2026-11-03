@@ -72,4 +72,10 @@ public class ResumenTurno {
     public boolean estaVacio() {
         return mensajes.isEmpty();
     }
+
+    public void agregarMensaje(String mensaje) {
+        if (mensaje != null) {
+            mensajes.add(mensaje);
+        }
+    }
 }
