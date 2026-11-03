@@ -41,8 +41,8 @@ public final class PanelReglas extends JPanel {
             - Los barcos bloquean el paso, pero no la visión ni los disparos.
             - Todas las distancias se miden en casillas, y una diagonal cuenta como un solo paso.
             - Si las dos casillas vecinas de una diagonal bloquean, la diagonal también queda \
-            bloqueada (para el paso o la visión, según el tipo). Si bloquea solo una, la diagonal \ 
-            está libre.            
+            bloqueada (para el paso o la visión, según el tipo). Si bloquea solo una, la diagonal \
+            está libre.
             
             BARCOS
             Cada jugador tiene 1 Acorazado, 2 Cruceros y 3 Destructores. Cada barco ocupa 1 casilla.
