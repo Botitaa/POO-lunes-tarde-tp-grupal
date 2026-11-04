@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 public class RepositorioPartidasArchivo implements RepositorioPartidas {
 
@@ -292,17 +293,82 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
 
     @Override
     public List<CabeceraGuardado> listar() throws PersistenciaException {
-        throw new UnsupportedOperationException("Pendiente");
+        if (!Files.exists(carpeta)) {
+            return new ArrayList<>();
+        }
+
+        List<CabeceraGuardado> cabeceras = new ArrayList<>();
+
+        try (Stream<Path> stream = Files.list(carpeta)) {
+            List<Path> archivos = stream
+                    .filter(p -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".sav"))
+                    .toList();
+
+            for (Path archivo : archivos) {
+                try (BufferedReader reader = Files.newBufferedReader(archivo)) {
+                    String linea1 = reader.readLine();
+                    String linea2 = reader.readLine();
+
+                    if (linea1 == null || linea2 == null) {
+                        continue;
+                    }
+
+                    String[] partes1 = linea1.split(";");
+                    if (partes1.length != 2 || !partes1[0].equals("BATALLA-NAVAL")) {
+                        continue;
+                    }
+
+                    int version = Integer.parseInt(partes1[1]);
+                    if (version != VERSION_FORMATO) {
+                        continue;
+                    }
+
+                    String[] partes2 = linea2.split(";");
+                    if (partes2.length != 7 || !partes2[0].equals("CABECERA")) {
+                        continue;
+                    }
+
+                    String nombre = partes2[1];
+                    LocalDateTime fecha = LocalDateTime.parse(partes2[2]);
+                    String j1 = partes2[3];
+                    String j2 = partes2[4];
+                    int ronda = Integer.parseInt(partes2[5]);
+                    FasePartida fase = FasePartida.valueOf(partes2[6]);
+
+                    cabeceras.add(new CabeceraGuardado(version, nombre, fecha, j1, j2, ronda, fase));
+                } catch (Exception e) {
+                    continue;
+                }
+            }
+        } catch (IOException e) {
+            throw new PersistenciaException("Error al listar las partidas en " + carpeta, e);
+        }
+
+        cabeceras.sort((c1, c2) -> c2.fecha().compareTo(c1.fecha()));
+        return cabeceras;
     }
 
     @Override
     public void borrar(String nombre) throws PersistenciaException {
-        throw new UnsupportedOperationException("Pendiente");
+        if (nombre == null || !nombre.matches("^[a-zA-Z0-9_-]{1,40}$")) {
+            throw new PersistenciaException("Nombre de partida invalido: " + nombre);
+        }
+
+        Path archivo = carpeta.resolve(nombre + ".sav");
+        if (!Files.exists(archivo)) {
+            throw new PersistenciaException("El archivo a borrar no existe: " + archivo);
+        }
+
+        try {
+            Files.delete(archivo);
+        } catch (IOException e) {
+            throw new PersistenciaException("Error al borrar el archivo: " + archivo, e);
+        }
     }
 
     @Override
     public boolean existe(String nombre) {
-        if (nombre == null || nombre.isBlank()) {
+        if (nombre == null || !nombre.matches("^[a-zA-Z0-9_-]{1,40}$")) {
             return false;
         }
         return Files.exists(carpeta.resolve(nombre + ".sav"));
