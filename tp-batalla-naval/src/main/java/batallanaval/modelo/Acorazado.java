@@ -1,8 +1,6 @@
 package batallanaval.modelo;
 
-/**
- * Representa un navío de tipo Acorazado, con alto blindaje, gran alcance y habilidad de disparo extendido.
- */
+
 public class Acorazado extends Barco {
 
     private static final EstadisticasBarco ESTADISTICAS = new EstadisticasBarco(
@@ -39,11 +37,6 @@ public class Acorazado extends Barco {
     protected void aplicarHabilidad() {
     }
 
-    /**
-     * Devuelve el rango de disparo, aumentado a 8 si la habilidad especial esta activa.
-     *
-     * @return rango efectivo de tiro.
-     */
     @Override
     public int getRangoDisparo() {
         if (estaHabilidadActiva()) {
@@ -52,11 +45,6 @@ public class Acorazado extends Barco {
         return 6;
     }
 
-    /**
-     * Devuelve el simbolo 'A' representativo del acorazado.
-     *
-     * @return caracter 'A'.
-     */
     @Override
     public char getSimbolo() {
         return 'A';

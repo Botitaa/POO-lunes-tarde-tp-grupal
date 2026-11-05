@@ -35,6 +35,11 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
      */
     public static final int VERSION_FORMATO = 1;
 
+    /**
+     * Expresión regular para validar nombres de archivo de partidas guardadas.
+     */
+    public static final String REGEX_NOMBRE = "^[a-zA-Z0-9_-]{1,40}$";
+
     private final Path carpeta;
 
     /**
@@ -54,6 +59,36 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
     }
 
     /**
+     * Valida si un nombre de partida cumple con las restricciones de caracteres y longitud.
+     *
+     * @param nombre nombre a comprobar.
+     * @return true si es válido.
+     */
+    public static boolean esNombreValido(String nombre) {
+        return nombre != null && nombre.matches(REGEX_NOMBRE);
+    }
+
+    private static void validarNombre(String nombre) throws PersistenciaException {
+        if (!esNombreValido(nombre)) {
+            throw new PersistenciaException("Nombre de partida invalido: " + nombre);
+        }
+    }
+
+    private static String escaparTexto(String texto) {
+        if (texto == null) {
+            return "";
+        }
+        return texto.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r");
+    }
+
+    private static String desescaparTexto(String texto) {
+        if (texto == null) {
+            return "";
+        }
+        return texto.replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\");
+    }
+
+    /**
      * Guarda el estado actual de la partida en un archivo .sav de texto plano.
      *
      * @param partida partida en juego a guardar.
@@ -62,9 +97,7 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
      */
     @Override
     public void guardar(GestorPartida partida, String nombre) throws PersistenciaException {
-        if (nombre == null || !nombre.matches("^[a-zA-Z0-9_-]{1,40}$")) {
-            throw new PersistenciaException("Nombre de partida invalido: " + nombre);
-        }
+        validarNombre(nombre);
 
         if (partida == null || !partida.puedeGuardarse()) {
             throw new PersistenciaException("La partida no se puede guardar en su estado actual.");
@@ -102,7 +135,7 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
             for (DatosJugador dj : instantanea.jugadores()) {
                 if (dj.resumenPendiente() != null) {
                     for (String mensaje : dj.resumenPendiente()) {
-                        writer.write("RESUMEN;" + dj.numero() + ";" + mensaje);
+                        writer.write("RESUMEN;" + dj.numero() + ";" + escaparTexto(mensaje));
                         writer.newLine();
                     }
                 }
@@ -124,7 +157,7 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
 
             if (instantanea.eventos() != null) {
                 for (EventoPartida ev : instantanea.eventos()) {
-                    writer.write("EVENTO;" + ev.ronda() + ";" + ev.numeroJugador() + ";" + ev.tipo().name() + ";" + ev.momento() + ";" + ev.descripcion());
+                    writer.write("EVENTO;" + ev.ronda() + ";" + ev.numeroJugador() + ";" + ev.tipo().name() + ";" + ev.momento() + ";" + escaparTexto(ev.descripcion()));
                     writer.newLine();
                 }
             }
@@ -142,9 +175,7 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
      */
     @Override
     public GestorPartida cargar(String nombre) throws PersistenciaException {
-        if (nombre == null || !nombre.matches("^[a-zA-Z0-9_-]{1,40}$")) {
-            throw new PersistenciaException("Nombre de partida invalido: " + nombre);
-        }
+        validarNombre(nombre);
 
         Path archivo = carpeta.resolve(nombre + ".sav");
         if (!Files.exists(archivo)) {
@@ -226,7 +257,7 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
                             throw new PersistenciaException("Línea " + numeroLinea + " del guardado inválida: campos insuficientes en RESUMEN");
                         }
                         int numero = Integer.parseInt(partes[1]);
-                        String mensaje = partes[2];
+                        String mensaje = desescaparTexto(partes[2]);
                         resumenes.putIfAbsent(numero, new ArrayList<>());
                         resumenes.get(numero).add(mensaje);
                     } else if (linea.startsWith("BARCO;")) {
@@ -265,7 +296,7 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
                         int j = Integer.parseInt(partes[2]);
                         TipoEvento tipo = TipoEvento.valueOf(partes[3]);
                         LocalDateTime momento = LocalDateTime.parse(partes[4]);
-                        String desc = partes[5];
+                        String desc = desescaparTexto(partes[5]);
                         eventos.add(new EventoPartida(r, j, tipo, desc, momento));
                     } else {
                         throw new PersistenciaException("Línea " + numeroLinea + " del guardado inválida: tipo de registro desconocido");
@@ -312,7 +343,7 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
 
         try {
             return GestorPartida.restaurar(instantanea, tablero);
-        } catch (IllegalStateException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             throw new PersistenciaException("Error al restaurar partida guardada: " + e.getMessage(), e);
         }
     }
@@ -392,9 +423,7 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
      */
     @Override
     public void borrar(String nombre) throws PersistenciaException {
-        if (nombre == null || !nombre.matches("^[a-zA-Z0-9_-]{1,40}$")) {
-            throw new PersistenciaException("Nombre de partida invalido: " + nombre);
-        }
+        validarNombre(nombre);
 
         Path archivo = carpeta.resolve(nombre + ".sav");
         if (!Files.exists(archivo)) {
@@ -416,7 +445,7 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
      */
     @Override
     public boolean existe(String nombre) {
-        if (nombre == null || !nombre.matches("^[a-zA-Z0-9_-]{1,40}$")) {
+        if (!esNombreValido(nombre)) {
             return false;
         }
         return Files.exists(carpeta.resolve(nombre + ".sav"));

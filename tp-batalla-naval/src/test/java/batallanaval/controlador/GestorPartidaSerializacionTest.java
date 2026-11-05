@@ -93,7 +93,7 @@ public class GestorPartidaSerializacionTest {
     }
 
     @Test
-    void restaurarLanzaIllegalStateExceptionSiFaseEsDespliegue() {
+    void restaurarLanzaIllegalArgumentExceptionSiFaseEsDespliegue() {
         GestorPartida partida = crearPartidaEnJuegoValida();
         InstantaneaPartida inst = partida.crearInstantanea();
         InstantaneaPartida instInvalida = new InstantaneaPartida(
@@ -107,11 +107,11 @@ public class GestorPartidaSerializacionTest {
                 inst.eventos()
         );
 
-        assertThrows(IllegalStateException.class, () -> GestorPartida.restaurar(instInvalida, crearTableroEstandar()));
+        assertThrows(IllegalArgumentException.class, () -> GestorPartida.restaurar(instInvalida, crearTableroEstandar()));
     }
 
     @Test
-    void restaurarLanzaIllegalStateExceptionSiBarcosEnMismaPosicion() {
+    void restaurarLanzaIllegalArgumentExceptionSiBarcosEnMismaPosicion() {
         GestorPartida partida = crearPartidaEnJuegoValida();
         InstantaneaPartida inst = partida.crearInstantanea();
 
@@ -142,11 +142,11 @@ public class GestorPartidaSerializacionTest {
                 inst.eventos()
         );
 
-        assertThrows(IllegalStateException.class, () -> GestorPartida.restaurar(instInvalida, crearTableroEstandar()));
+        assertThrows(IllegalArgumentException.class, () -> GestorPartida.restaurar(instInvalida, crearTableroEstandar()));
     }
 
     @Test
-    void restaurarLanzaIllegalStateExceptionSiBarcoSobreObstaculo() {
+    void restaurarLanzaIllegalArgumentExceptionSiBarcoSobreObstaculo() {
         GestorPartida partida = crearPartidaEnJuegoValida();
         InstantaneaPartida inst = partida.crearInstantanea();
 
@@ -176,11 +176,11 @@ public class GestorPartidaSerializacionTest {
                 inst.eventos()
         );
 
-        assertThrows(IllegalStateException.class, () -> GestorPartida.restaurar(instInvalida, crearTableroEstandar()));
+        assertThrows(IllegalArgumentException.class, () -> GestorPartida.restaurar(instInvalida, crearTableroEstandar()));
     }
 
     @Test
-    void restaurarLanzaIllegalStateExceptionSiVidaEsNegativa() {
+    void restaurarLanzaIllegalArgumentExceptionSiVidaEsNegativa() {
         GestorPartida partida = crearPartidaEnJuegoValida();
         InstantaneaPartida inst = partida.crearInstantanea();
 
@@ -210,7 +210,7 @@ public class GestorPartidaSerializacionTest {
                 inst.eventos()
         );
 
-        assertThrows(IllegalStateException.class, () -> GestorPartida.restaurar(instInvalida, crearTableroEstandar()));
+        assertThrows(IllegalArgumentException.class, () -> GestorPartida.restaurar(instInvalida, crearTableroEstandar()));
     }
 
     @Test

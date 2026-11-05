@@ -49,6 +49,20 @@ class JugadorTest {
     }
 
     @Test
+    void testConstructorRechazaNombreConPuntoYComa() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Jugador(1, "Juan;Perez", FabricaFlota.crearFlotaEstandar(1)));
+    }
+
+    @Test
+    void testConstructorRechazaNombreConSaltoDeLinea() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Jugador(1, "Juan\nPerez", FabricaFlota.crearFlotaEstandar(1)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Jugador(1, "Juan\rPerez", FabricaFlota.crearFlotaEstandar(1)));
+    }
+
+    @Test
     void testConstructorRechazaNumeroInvalido() {
         assertThrows(IllegalArgumentException.class,
                 () -> new Jugador(0, "Bota", FabricaFlota.crearFlotaEstandar(1)));

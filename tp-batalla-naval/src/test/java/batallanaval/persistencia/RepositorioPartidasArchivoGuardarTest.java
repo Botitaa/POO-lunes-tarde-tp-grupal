@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -126,5 +127,59 @@ public class RepositorioPartidasArchivoGuardarTest {
         GestorPartida partidaDespliegue = new GestorPartida(j1, j2, Tablero.crearMapaEstandar());
 
         assertThrows(PersistenciaException.class, () -> repo.guardar(partidaDespliegue, "partida1"));
+    }
+
+    @Test
+    void guardarYRecuperarConSaltosDeLineaEnResumenYEvento(@TempDir Path tempDir) throws PersistenciaException {
+        RepositorioPartidasArchivo repo = new RepositorioPartidasArchivo(tempDir);
+        List<Barco> f1 = FabricaFlota.crearFlotaEstandar(1);
+        f1.get(0).ubicarEn(new Posicion(0, 0));
+        f1.get(1).ubicarEn(new Posicion(0, 1));
+        f1.get(2).ubicarEn(new Posicion(0, 2));
+        f1.get(3).ubicarEn(new Posicion(0, 3));
+        f1.get(4).ubicarEn(new Posicion(0, 4));
+        f1.get(5).ubicarEn(new Posicion(0, 5));
+
+        List<Barco> f2 = FabricaFlota.crearFlotaEstandar(7);
+        f2.get(0).ubicarEn(new Posicion(9, 0));
+        f2.get(1).ubicarEn(new Posicion(9, 1));
+        f2.get(2).ubicarEn(new Posicion(9, 2));
+        f2.get(3).ubicarEn(new Posicion(9, 3));
+        f2.get(4).ubicarEn(new Posicion(9, 4));
+        f2.get(5).ubicarEn(new Posicion(9, 5));
+
+        Tablero tablero = Tablero.crearMapaEstandar();
+
+        List<DatosJugador> jugadores = List.of(
+                new DatosJugador(1, "JugadorUno", 6, 1, List.of("Mensaje con\nsalto de linea")),
+                new DatosJugador(2, "JugadorDos", 6, 0, List.of())
+        );
+
+        List<DatosBarco> barcos = new ArrayList<>();
+        for (Barco b : f1) {
+            barcos.add(new DatosBarco(b.getId(), b.getSimbolo(), 1, b.getPosicion(), b.getVida(),
+                    b.getCooldownDisparo(), b.getCooldownHabilidad(), b.getCasillasRestantes(),
+                    b.estaHabilidadActiva(), b.estaRevelado()));
+        }
+        for (Barco b : f2) {
+            barcos.add(new DatosBarco(b.getId(), b.getSimbolo(), 2, b.getPosicion(), b.getVida(),
+                    b.getCooldownDisparo(), b.getCooldownHabilidad(), b.getCasillasRestantes(),
+                    b.estaHabilidadActiva(), b.estaRevelado()));
+        }
+
+        EventoPartida evento = new EventoPartida(1, 1, TipoEvento.FIN_TURNO, "Evento con\nsalto", LocalDateTime.now());
+        InstantaneaPartida instantanea = new InstantaneaPartida(
+                "estandar", 1, 1, FasePartida.EN_JUEGO, jugadores, barcos, List.of(), List.of(evento)
+        );
+
+        GestorPartida partida = GestorPartida.restaurar(instantanea, tablero);
+        repo.guardar(partida, "partidaConSaltos");
+
+        GestorPartida cargada = repo.cargar("partidaConSaltos");
+        InstantaneaPartida instCargada = cargada.crearInstantanea();
+
+        assertEquals(1, instCargada.jugadores().get(0).resumenPendiente().size());
+        assertEquals("Mensaje con\nsalto de linea", instCargada.jugadores().get(0).resumenPendiente().get(0));
+        assertEquals("Evento con\nsalto", instCargada.eventos().get(0).descripcion());
     }
 }
