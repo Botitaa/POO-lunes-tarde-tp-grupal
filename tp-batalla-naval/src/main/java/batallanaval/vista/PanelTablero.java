@@ -26,6 +26,7 @@ import java.util.Objects;
  * Panel que extiende de JPanel para representar la grilla de 10x10 del tablero de Batalla Naval.
  * Dibuja cada tipo de casilla, las zonas de despliegue, la zona de dominación
  * y los barcos propios (símbolo, vida y barra de vida, con el color del jugador).
+ * Al pasar el mouse sobre un barco muestra un tooltip con sus atributos.
  * Todo lo que dibuja se lo pregunta a PartidaTablero: el panel no conoce el Tablero.
  * Implementa ObservadorPartida: quien crea el panel lo registra en la partida con
  * agregarObservador, y desde ahí el panel se redibuja ante cada cambio.
@@ -50,6 +51,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     public PanelTablero(PartidaTablero partidaTablero) {
         this.partidaTablero = Objects.requireNonNull(partidaTablero, "La partida no puede ser nula.");
         setBackground(Color.DARK_GRAY);
+
+        // Activa los tooltips del panel; el texto de cada uno lo arma getToolTipText(MouseEvent)
+        setToolTipText("");
 
         // Registramos los listeners para las acciones del mouse
         addMouseListener(this);
@@ -223,6 +227,78 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
             return new Color(230, 90, 50);  // Naranja: jugador 1
         }
         return new Color(170, 80, 220);     // Violeta: jugador 2
+    }
+
+    // Tooltip de barcos 
+
+    /**
+     * Swing lo llama cuando el mouse se queda quieto sobre el panel. Si hay un barco
+     * en esa casilla devuelve el texto con sus atributos; si no, null y no se muestra nada.
+     *
+     * @param e evento del mouse con la posición del cursor
+     * @return texto del tooltip, o null si no hay barco bajo el mouse
+     */
+    @Override
+    public String getToolTipText(MouseEvent e) {
+        Posicion pos = obtenerPosicionDesdeCoordenadas(e.getX(), e.getY());
+        if (pos == null) {
+            return null;
+        }
+        EstadoBarco barco = buscarBarcoEn(pos);
+        if (barco == null) {
+            return null;
+        }
+        return armarTextoTooltip(barco);
+    }
+
+    /**
+     * Busca un barco en la posición: primero entre los propios y después entre los
+     * enemigos visibles. Devuelve null si no hay ninguno.
+     */
+    private EstadoBarco buscarBarcoEn(Posicion pos) {
+        for (EstadoBarco barco : partidaTablero.getBarcosPropios()) {
+            if (pos.equals(barco.posicion())) {
+                return barco;
+            }
+        }
+        for (EstadoBarco barco : partidaTablero.getBarcosEnemigosVisibles()) {
+            if (pos.equals(barco.posicion())) {
+                return barco;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Arma el texto del tooltip en HTML (Swing lo acepta para poder usar varias líneas).
+     * De los barcos enemigos no se muestran los cooldowns (decisión de diseño: es información del rival).
+     */
+    private String armarTextoTooltip(EstadoBarco barco) {
+        String texto = "<html><b>" + nombreTipo(barco.simbolo()) + "</b>";
+        if (!barco.esPropio()) {
+            texto += " (enemigo)";
+        }
+        texto += "<br>Vida: " + barco.vida() + " / " + barco.vidaMaxima();
+        texto += "<br>Rango de disparo: " + barco.rangoDisparo();
+        if (barco.esPropio()) {
+            texto += "<br>Cooldown de disparo: " + barco.cooldownDisparo();
+            texto += "<br>Cooldown de habilidad: " + barco.cooldownHabilidad();
+        }
+        return texto + "</html>";
+    }
+
+    /** Traduce el símbolo del barco al nombre de su tipo. */
+    private String nombreTipo(char simbolo) {
+        switch (simbolo) {
+            case 'A':
+                return "Acorazado";
+            case 'C':
+                return "Crucero";
+            case 'D':
+                return "Destructor";
+            default:
+                return "Barco";
+        }
     }
 
     // Cálculos de la grilla: los usan paintComponent y obtenerPosicionDesdeCoordenadas, así siempre coinciden
