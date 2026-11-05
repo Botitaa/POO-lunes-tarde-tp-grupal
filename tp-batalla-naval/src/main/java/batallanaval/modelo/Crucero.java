@@ -1,6 +1,8 @@
 package batallanaval.modelo;
 
-
+/**
+ * Representa un navío de tipo Crucero, con balance entre velocidad y ataque, y habilidad de autoreparación.
+ */
 public class Crucero extends Barco {
 
     private static final EstadisticasBarco ESTADISTICAS = new EstadisticasBarco(
@@ -38,6 +40,11 @@ public class Crucero extends Barco {
         curar(2);
     }
 
+    /**
+     * Devuelve el simbolo 'C' representativo del crucero.
+     *
+     * @return caracter 'C'.
+     */
     @Override
     public char getSimbolo() {
         return 'C';

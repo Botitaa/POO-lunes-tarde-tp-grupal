@@ -4,7 +4,9 @@ import batallanaval.excepciones.DisparoInvalidoException;
 import batallanaval.excepciones.HabilidadNoDisponibleException;
 import batallanaval.excepciones.MovimientoInvalidoException;
 
-
+/**
+ * Clase base de un navío. Controla vida, cooldowns, posición y acciones del turno.
+ */
 public abstract class Barco {
 
     private final int id;
@@ -18,7 +20,6 @@ public abstract class Barco {
     private boolean habilidadActiva;
     private boolean revelado;
 
-  
     protected Barco(int id, EstadisticasBarco estadisticas, Posicion posicion) {
         this.id = id;
         this.estadisticas = estadisticas;
@@ -32,12 +33,11 @@ public abstract class Barco {
         this.revelado = false;
     }
 
-    
     protected Barco(int id, EstadisticasBarco estadisticas) {
         this(id, estadisticas, null);
     }
 
-
+    /** Descuenta daño recibido. Si la vida llega a 0, queda hundido. */
     public void recibirDanio(int cantidad) {
         if (cantidad < 0) {
             throw new IllegalArgumentException("El danio no puede ser negativo.");
@@ -48,7 +48,7 @@ public abstract class Barco {
         }
     }
 
-   
+    /** Restaura vida sin superar la vida máxima. No tiene efecto si está hundido. */
     public void curar(int cantidad) {
         if (cantidad < 0) {
             throw new IllegalArgumentException("La curacion no puede ser negativa.");
@@ -61,46 +61,32 @@ public abstract class Barco {
         }
     }
 
-  
+    /** Indica si el barco no tiene más vida. */
     public boolean estaHundido() {
         return this.vida <= 0;
     }
 
-    
+    /** Daño de disparo (puede ser modificado por habilidades). */
     public int getDanio() {
         return estadisticas.danio();
     }
 
-   
+    /** Alcance máximo de disparo en distancia Chebyshev. */
     public int getRangoDisparo() {
         return estadisticas.rangoDisparo();
     }
 
-    /**
-     * Comprueba si una distancia se encuentra dentro del rango de tiro del barco.
-     *
-     * @param distancia distancia de Chebyshev al objetivo.
-     * @return {@code true} si la distancia es menor o igual al rango de disparo.
-     */
+    /** Verifica si una distancia Chebyshev entra en el rango de tiro. */
     public boolean estaEnRango(int distancia) {
         return distancia <= getRangoDisparo();
     }
 
-    /**
-     * Indica si el barco está habilitado para disparar en el estado actual del turno.
-     *
-     * @return {@code true} si está a flote, no disparó este turno y no está en cooldown.
-     */
+    /** Habilitado para disparar si está vivo, no disparó este turno y cooldown es 0. */
     public boolean puedeDisparar() {
         return !estaHundido() && !yaDisparo && cooldownDisparo == 0;
     }
 
-    /**
-     * Registra un disparo efectuado por el barco, fijando el cooldown correspondiente,
-     * marcándolo como revelado y deshabilitando nuevos disparos o movimientos este turno.
-     *
-     * @throws DisparoInvalidoException si el barco no estaba en condiciones de disparar.
-     */
+    /** Registra el disparo: activa cooldown máximo, marca revelado e inhabilita movimiento. */
     public void registrarDisparo() {
         if (!puedeDisparar()) {
             throw new DisparoInvalidoException("El barco no esta en condiciones de disparar.");
@@ -110,23 +96,12 @@ public abstract class Barco {
         this.revelado = true;
     }
 
-    /**
-     * Indica si el barco puede desplazarse en este momento del turno.
-     * Un barco que ya disparó no puede moverse.
-     *
-     * @return {@code true} si está a flote, no disparó este turno y tiene casillas restantes.
-     */
+    /** Puede moverse si está vivo, no disparó en el turno y le quedan casillas. */
     public boolean puedeMoverse() {
         return !estaHundido() && !yaDisparo && casillasRestantes > 0;
     }
 
-    /**
-     * Desplaza el barco a una nueva coordenada descontando las casillas avanzadas.
-     *
-     * @param destino nueva posición.
-     * @param pasos   cantidad de casillas avanzadas.
-     * @throws MovimientoInvalidoException si no puede moverse o la cantidad de pasos es inválida.
-     */
+    /** Actualiza la posición y descuenta pasos de las casillas restantes del turno. */
     public void moverA(Posicion destino, int pasos) {
         if (!puedeMoverse()) {
             throw new MovimientoInvalidoException("El barco no puede moverse en este momento.");
@@ -138,30 +113,17 @@ public abstract class Barco {
         this.casillasRestantes = this.casillasRestantes - pasos;
     }
 
-    /**
-     * Asigna la posición inicial del barco durante la fase de despliegue.
-     *
-     * @param posicion posición asignada en el tablero.
-     */
+    /** Asigna la posición inicial en fase de despliegue. */
     public void ubicarEn(Posicion posicion) {
         this.posicion = posicion;
     }
 
-    /**
-     * Indica si la habilidad especial del navío está disponible para ser activada.
-     *
-     * @return {@code true} si está a flote, no se activó este turno y no está en espera.
-     */
+    /** Habilidad disponible si está a flote, no se activó este turno y cooldown es 0. */
     public boolean puedeUsarHabilidad() {
         return !estaHundido() && !habilidadActiva && cooldownHabilidad == 0;
     }
 
-    /**
-     * Activa la habilidad especial del barco mediante el patrón Template Method:
-     * valida disponibilidad, aplica el efecto propio de la subclase y establece el cooldown.
-     *
-     * @throws HabilidadNoDisponibleException si la habilidad no puede usarse.
-     */
+    /** Template Method: valida, activa efecto de subclase y fija cooldown máximo. */
     public final void usarHabilidad() {
         if (!puedeUsarHabilidad()) {
             throw new HabilidadNoDisponibleException("La habilidad no esta disponible.");
@@ -171,15 +133,10 @@ public abstract class Barco {
         this.cooldownHabilidad = estadisticas.cooldownHabilidadMax();
     }
 
-    /**
-     * Efecto concreto de la habilidad especial definido por cada subclase.
-     */
+    /** Efecto propio de cada subclase (Destructor x2 daño, Crucero se cura 2, Acorazado rango 8). */
     protected abstract void aplicarHabilidad();
 
-    /**
-     * Restablece el estado del barco al comienzo de un nuevo turno propio:
-     * decrementa cooldowns pendientes, rehabilita el movimiento y desactiva la habilidad temporal.
-     */
+    /** Reduce cooldowns en 1, repone casillas de movimiento y reinicia flags al inicio del turno. */
     public void reiniciarTurno() {
         if (cooldownDisparo > 0) {
             cooldownDisparo--;
@@ -192,26 +149,12 @@ public abstract class Barco {
         this.habilidadActiva = false;
     }
 
-    /**
-     * Modifica el estado de visibilidad forzada (revelado) del barco.
-     *
-     * @param revelado {@code true} para mantenerlo revelado; {@code false} en caso contrario.
-     */
+    /** Modifica si el barco es visible para el rival por disparo previo. */
     public void marcarRevelado(boolean revelado) {
         this.revelado = revelado;
     }
 
-    /**
-     * Restaura el estado completo del barco al cargar una partida guardada.
-     *
-     * @param vida              vida restante.
-     * @param posicion          coordenada en el mapa.
-     * @param cooldownDisparo   turnos restantes de recarga de disparo.
-     * @param cooldownHabilidad turnos restantes de recarga de habilidad.
-     * @param casillasRestantes casillas que le quedan por mover en el turno.
-     * @param habilidadActiva   indica si la habilidad temporal estaba activa.
-     * @param revelado          indica si el barco estaba descubierto.
-     */
+    /** Restaura el estado completo al cargar partida guardada. */
     public void restaurar(int vida, Posicion posicion, int cooldownDisparo, int cooldownHabilidad,
                           int casillasRestantes, boolean habilidadActiva, boolean revelado) {
         this.vida = vida;
@@ -267,5 +210,6 @@ public abstract class Barco {
         return revelado;
     }
 
+    /** Símbolo del barco: 'D' Destructor, 'C' Crucero, 'A' Acorazado. */
     public abstract char getSimbolo();
 }

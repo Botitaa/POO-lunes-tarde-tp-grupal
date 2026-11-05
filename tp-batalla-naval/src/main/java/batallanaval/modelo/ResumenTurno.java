@@ -73,6 +73,11 @@ public class ResumenTurno {
         return mensajes.isEmpty();
     }
 
+    /**
+     * Agrega un mensaje arbitrario al resumen del jugador.
+     *
+     * @param mensaje texto del mensaje a registrar.
+     */
     public void agregarMensaje(String mensaje) {
         if (mensaje != null) {
             mensajes.add(mensaje);

@@ -1,6 +1,7 @@
 package batallanaval.modelo;
 
-public final class Posicion{
+/** Coordenada inmutable (fila, columna) en el tablero. */
+public final class Posicion {
     private final int fila;
     private final int columna;
 
@@ -17,16 +18,17 @@ public final class Posicion{
         return columna;
     }
 
+    /** Distancia Chebyshev: max(|fila1 - fila2|, |col1 - col2|). Usada para rango de tiro y visión. */
     public int distanciaChebyshev(Posicion otra) {
         int diferenciaFilas = this.fila - otra.fila;
-        if (diferenciaFilas < 0) { //si la diferencia es negativa, la hago positiva para obtener el valor absoluto
+        if (diferenciaFilas < 0) {
             diferenciaFilas = -diferenciaFilas;
         }
         int diferenciaColumnas = this.columna - otra.columna;
-        if (diferenciaColumnas < 0) {//si la diferencia es negativa, la hago positiva para obtener el valor absoluto
+        if (diferenciaColumnas < 0) {
             diferenciaColumnas = -diferenciaColumnas;
         }
-        if (diferenciaFilas > diferenciaColumnas) {//si la diferencia de filas es mayor que la diferencia de columnas, devuelvo la diferencia de filas
+        if (diferenciaFilas > diferenciaColumnas) {
             return diferenciaFilas;
         }
         return diferenciaColumnas;
@@ -34,23 +36,23 @@ public final class Posicion{
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {//si el objeto es el mismo, devuelvo true
+        if (this == obj) {
             return true;
         }
-        if ((!(obj instanceof Posicion))) {//si el objeto no es una instancia de Posicion, devuelvo false
+        if (!(obj instanceof Posicion)) {
             return false;
         }
-        Posicion otra = (Posicion) obj;//si el objeto es una instancia de Posicion, lo casteo a Posicion
-        return this.fila == otra.fila && this.columna == otra.columna;//si la fila y la columna son iguales, devuelvo true, sino devuelvo false
+        Posicion otra = (Posicion) obj;
+        return this.fila == otra.fila && this.columna == otra.columna;
     }
 
     @Override
     public int hashCode() {
-        return 31 * fila + columna; //uso 31 porque es un numero primo e imparr y ayuda a distribuir mejor los hashcodes
+        return 31 * fila + columna;
     }
 
     @Override
     public String toString() {
-        return "(" + fila + "," + columna + ")"; //devuelve la posicion en formato (fila,columna)
+        return "(" + fila + "," + columna + ")";
     }
 }

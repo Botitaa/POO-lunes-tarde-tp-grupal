@@ -18,6 +18,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+/**
+ * Controlador principal de las reglas del juego y coordinador del estado de la partida (patrón Controlador GRASP).
+ */
 public class GestorPartida implements Partida {
 
     public static final int TURNOS_MAX = 40;
@@ -39,6 +42,13 @@ public class GestorPartida implements Partida {
     private ResultadoPartida resultado;
     private boolean accionRealizadaEnTurno;
 
+    /**
+     * Construye una nueva partida con los dos jugadores y el tablero de juego.
+     *
+     * @param jugador1 primer jugador de la partida.
+     * @param jugador2 segundo jugador de la partida.
+     * @param tablero grilla y mapa de juego.
+     */
     public GestorPartida(Jugador jugador1, Jugador jugador2, Tablero tablero) {
         this.jugador1 = Objects.requireNonNull(jugador1, "El jugador 1 no puede ser nulo.");
         this.jugador2 = Objects.requireNonNull(jugador2, "El jugador 2 no puede ser nulo.");
@@ -204,6 +214,11 @@ public class GestorPartida implements Partida {
         return historial.getEventosVisiblesPara(jugadorActivo.getNumero());
     }
 
+    /**
+     * Construye una instantánea completa (Memento) con el estado actual de la partida.
+     *
+     * @return instantanea inmutable de la partida.
+     */
     public InstantaneaPartida crearInstantanea() {
         List<DatosJugador> datosJugadores = new ArrayList<>();
         datosJugadores.add(new DatosJugador(
@@ -324,6 +339,14 @@ public class GestorPartida implements Partida {
         }
     }
 
+    /**
+     * Reconstruye una instancia de GestorPartida a partir de una instantanea previa y un tablero.
+     *
+     * @param instantanea foto completa de la partida guardada.
+     * @param tablero tablero de juego base a configurar.
+     * @return nueva partida restaurada en el estado exacto.
+     * @throws IllegalStateException si la instantanea contiene un estado invalido o inconsistente.
+     */
     public static GestorPartida restaurar(InstantaneaPartida instantanea, Tablero tablero) {
         if (instantanea == null || tablero == null) {
             throw new IllegalStateException("La instantanea y el tablero no pueden ser nulos");

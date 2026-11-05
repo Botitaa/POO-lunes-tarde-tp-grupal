@@ -24,20 +24,42 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+/**
+ * Implementación de almacenamiento de partidas en archivos de texto plano (.sav)
+ * mediante BufferedReader y BufferedWriter.
+ */
 public class RepositorioPartidasArchivo implements RepositorioPartidas {
 
+    /**
+     * Versión actual del formato de guardado de partidas.
+     */
     public static final int VERSION_FORMATO = 1;
 
     private final Path carpeta;
 
+    /**
+     * Crea un repositorio apuntando a la ruta por defecto de partidas.
+     */
     public RepositorioPartidasArchivo() {
         this(RutasApp.PARTIDAS);
     }
 
+    /**
+     * Crea un repositorio configurando una carpeta personalizada.
+     *
+     * @param carpeta directorio donde se guardarán y leerán los archivos .sav.
+     */
     public RepositorioPartidasArchivo(Path carpeta) {
         this.carpeta = carpeta;
     }
 
+    /**
+     * Guarda el estado actual de la partida en un archivo .sav de texto plano.
+     *
+     * @param partida partida en juego a guardar.
+     * @param nombre nombre del archivo de guardado (sin extensión .sav).
+     * @throws PersistenciaException si el nombre es inválido, la partida no puede guardarse o falla la escritura.
+     */
     @Override
     public void guardar(GestorPartida partida, String nombre) throws PersistenciaException {
         if (nombre == null || !nombre.matches("^[a-zA-Z0-9_-]{1,40}$")) {
@@ -111,6 +133,13 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
         }
     }
 
+    /**
+     * Lee un archivo .sav de texto y restaura la partida correspondiente.
+     *
+     * @param nombre nombre del archivo de guardado (sin extensión).
+     * @return instancia de GestorPartida con el estado restaurado.
+     * @throws PersistenciaException si el archivo no existe, la versión no coincide, o hay líneas mal formadas.
+     */
     @Override
     public GestorPartida cargar(String nombre) throws PersistenciaException {
         if (nombre == null || !nombre.matches("^[a-zA-Z0-9_-]{1,40}$")) {
@@ -291,6 +320,13 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
     private record DatosJugadorAux(int numero, String nombre, int puntosMovimiento, int puntosDominacion) {
     }
 
+    /**
+     * Obtiene el listado de partidas guardadas leyendo solo las dos primeras líneas de cada archivo .sav,
+     * ordenadas de la más reciente a la más antigua, salteando archivos corruptos o incompletos.
+     *
+     * @return lista de cabeceras de partidas guardadas.
+     * @throws PersistenciaException si ocurre un error de acceso a la carpeta.
+     */
     @Override
     public List<CabeceraGuardado> listar() throws PersistenciaException {
         if (!Files.exists(carpeta)) {
@@ -348,6 +384,12 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
         return cabeceras;
     }
 
+    /**
+     * Elimina el archivo .sav correspondiente a una partida guardada.
+     *
+     * @param nombre nombre identificador de la partida.
+     * @throws PersistenciaException si el archivo no existe o ocurre un error al eliminarlo.
+     */
     @Override
     public void borrar(String nombre) throws PersistenciaException {
         if (nombre == null || !nombre.matches("^[a-zA-Z0-9_-]{1,40}$")) {
@@ -366,6 +408,12 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
         }
     }
 
+    /**
+     * Verifica la existencia física del archivo de partida guardada en disco.
+     *
+     * @param nombre nombre de la partida.
+     * @return true si el archivo existe en la carpeta configurada.
+     */
     @Override
     public boolean existe(String nombre) {
         if (nombre == null || !nombre.matches("^[a-zA-Z0-9_-]{1,40}$")) {
