@@ -1,5 +1,6 @@
 package batallanaval.vista;
 
+import batallanaval.controlador.EstadoBarco;
 import batallanaval.controlador.FasePartida;
 import batallanaval.controlador.ObservadorPartida;
 import batallanaval.controlador.PartidaTablero;
@@ -11,6 +12,8 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -21,7 +24,8 @@ import java.util.Objects;
 
 /**
  * Panel que extiende de JPanel para representar la grilla de 10x10 del tablero de Batalla Naval.
- * Dibuja cada tipo de casilla, las zonas de despliegue y la zona de dominación.
+ * Dibuja cada tipo de casilla, las zonas de despliegue, la zona de dominación
+ * y los barcos propios (símbolo, vida y barra de vida, con el color del jugador).
  * Todo lo que dibuja se lo pregunta a PartidaTablero: el panel no conoce el Tablero.
  * Implementa ObservadorPartida: quien crea el panel lo registra en la partida con
  * agregarObservador, y desde ahí el panel se redibuja ante cada cambio.
@@ -53,7 +57,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     }
 
     /**
-     * Dibuja las casillas, las zonas de despliegue, la zona de dominación
+     * Dibuja las casillas, las zonas de despliegue, los barcos propios, la zona de dominación
      * y el resaltado de la casilla bajo el mouse.
      *
      * @param g contexto gráfico que entrega Swing
@@ -134,6 +138,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
             }
         }
 
+        // Los barcos se dibujan arriba de las casillas ya pintadas
+        dibujarBarcosPropios(g2d, tamanoCelda, inicioX, inicioY);
+
         // La zona de dominación y el hover se dibujan después del for: si se dibujaran
         // adentro, las celdas siguientes les pintarían el borde negro encima.
 
@@ -158,6 +165,64 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
             g2d.setStroke(new BasicStroke(2));
             g2d.drawRect(x, y, tamanoCelda, tamanoCelda);
         }
+    }
+
+    // Dibujo de barcos 
+
+    /**
+     * Dibuja los barcos propios que ya tienen posición. Los datos los pide a la partida
+     * como EstadoBarco (solo lectura): el panel nunca recibe un Barco del modelo.
+     */
+    private void dibujarBarcosPropios(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
+        for (EstadoBarco barco : partidaTablero.getBarcosPropios()) {
+            Posicion pos = barco.posicion();
+            if (pos != null) { // durante el despliegue puede haber barcos sin ubicar
+                int x = inicioX + (pos.getColumna() * tamanoCelda);
+                int y = inicioY + (pos.getFila() * tamanoCelda);
+                dibujarBarco(g2d, barco, x, y, tamanoCelda);
+            }
+        }
+    }
+
+    /**
+     * Dibuja un barco en su celda: un fondo redondeado con el color del jugador,
+     * el símbolo con la vida (por ejemplo "C5") y abajo una barra de vida.
+     */
+    private void dibujarBarco(Graphics2D g2d, EstadoBarco barco, int x, int y, int tamanoCelda) {
+        int margen = tamanoCelda / 8;
+        int lado = tamanoCelda - 2 * margen;
+
+        // Fondo con el color del jugador
+        g2d.setColor(colorJugador(barco.numeroJugador()));
+        g2d.fillRoundRect(x + margen, y + margen, lado, lado, margen, margen);
+
+        // Texto: símbolo + vida, centrado en la celda
+        String texto = "" + barco.simbolo() + barco.vida();
+        g2d.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.max(10, tamanoCelda / 3)));
+        FontMetrics medidas = g2d.getFontMetrics();
+        int xTexto = x + (tamanoCelda - medidas.stringWidth(texto)) / 2;
+        int yTexto = y + (tamanoCelda + medidas.getAscent()) / 2 - margen;
+        g2d.setColor(Color.WHITE);
+        g2d.drawString(texto, xTexto, yTexto);
+
+        // Barra de vida: fondo oscuro y encima la parte que le queda, proporcional a la vida
+        int altoBarra = Math.max(3, tamanoCelda / 10);
+        int xBarra = x + margen + 2;
+        int yBarra = y + tamanoCelda - margen - altoBarra - 2;
+        int anchoBarra = lado - 4;
+        int anchoVida = anchoBarra * barco.vida() / barco.vidaMaxima();
+        g2d.setColor(new Color(60, 60, 60));
+        g2d.fillRect(xBarra, yBarra, anchoBarra, altoBarra);
+        g2d.setColor(new Color(60, 200, 80)); // Verde
+        g2d.fillRect(xBarra, yBarra, anchoVida, altoBarra);
+    }
+
+    /** Color que identifica a cada jugador (el mismo tono que su zona de despliegue). */
+    private Color colorJugador(int numeroJugador) {
+        if (numeroJugador == 1) {
+            return new Color(230, 90, 50);  // Naranja: jugador 1
+        }
+        return new Color(170, 80, 220);     // Violeta: jugador 2
     }
 
     // Cálculos de la grilla: los usan paintComponent y obtenerPosicionDesdeCoordenadas, así siempre coinciden
