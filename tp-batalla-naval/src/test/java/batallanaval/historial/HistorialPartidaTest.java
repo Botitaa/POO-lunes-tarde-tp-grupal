@@ -101,4 +101,84 @@ class HistorialPartidaTest {
         assertEquals(List.of(movimientoJ1, disparoJ1), historial.getEventosVisiblesPara(1));
         assertEquals(List.of(disparoJ1, habilidadJ2), historial.getEventosVisiblesPara(2));
     }
+    
+    // ---------- partida simulada ----------
+
+    @Test
+    void elOrdenSeMantieneEnUnaPartidaDeVariasRondas() {
+        HistorialPartida historial = new HistorialPartida();
+        EventoPartida r1j1 = crearEvento(1, 1, TipoEvento.MOVIMIENTO);
+        EventoPartida r1j2 = crearEvento(1, 2, TipoEvento.DISPARO);
+        EventoPartida r2j1 = crearEvento(2, 1, TipoEvento.HABILIDAD);
+        EventoPartida r2j1b = crearEvento(2, 1, TipoEvento.DISPARO);
+        EventoPartida r2j2 = crearEvento(2, 2, TipoEvento.FIN_TURNO);
+        EventoPartida r3j1 = crearEvento(3, 1, TipoEvento.HUNDIMIENTO);
+        historial.registrar(r1j1);
+        historial.registrar(r1j2);
+        historial.registrar(r2j1);
+        historial.registrar(r2j1b);
+        historial.registrar(r2j2);
+        historial.registrar(r3j1);
+
+        assertEquals(List.of(r1j1, r1j2, r2j1, r2j1b, r2j2, r3j1), historial.getEventos());
+        assertEquals(List.of(r2j1, r2j1b, r2j2), historial.getEventosDeRonda(2));
+        assertEquals(List.of(r1j2, r2j1b, r2j2, r3j1), historial.getEventosVisiblesPara(2));
+    }
+
+    @Test
+    void elRivalNuncaVeLosEventosPrivadosAjenos() {
+        HistorialPartida historial = new HistorialPartida();
+        // El jugador 1 hace un evento de cada tipo
+        for (TipoEvento tipo : TipoEvento.values()) {
+            historial.registrar(crearEvento(1, 1, tipo));
+        }
+
+        List<EventoPartida> visiblesParaRival = historial.getEventosVisiblesPara(2);
+        for (EventoPartida evento : visiblesParaRival) {
+            assertTrue(evento.tipo().esPublico(), "El rival vio un evento privado: " + evento.tipo());
+        }
+        assertEquals(5, visiblesParaRival.size()); // DISPARO, HUNDIMIENTO, DOMINACION, FIN_TURNO, FIN_PARTIDA
+    }
+
+    @Test
+    void elRivalNoVeMovimientoNiHabilidadAjenosPeroElDuenioSi() {
+        HistorialPartida historial = new HistorialPartida();
+        EventoPartida movimientoJ2 = crearEvento(4, 2, TipoEvento.MOVIMIENTO);
+        EventoPartida habilidadJ2 = crearEvento(4, 2, TipoEvento.HABILIDAD);
+        historial.registrar(movimientoJ2);
+        historial.registrar(habilidadJ2);
+
+        assertTrue(historial.getEventosVisiblesPara(1).isEmpty());
+        assertEquals(List.of(movimientoJ2, habilidadJ2), historial.getEventosVisiblesPara(2));
+    }
+
+    @Test
+    void cadaJugadorVeTodosSusEventosAunqueSeanPrivados() {
+        HistorialPartida historial = new HistorialPartida();
+        for (TipoEvento tipo : TipoEvento.values()) {
+            historial.registrar(crearEvento(1, 2, tipo));
+        }
+
+        assertEquals(TipoEvento.values().length, historial.getEventosVisiblesPara(2).size());
+    }
+
+    // ---------- aLinea ----------
+
+    @Test
+    void aLineaDeLosEventosDelHistorialSaleEnOrden() {
+        HistorialPartida historial = new HistorialPartida();
+        historial.registrar(new EventoPartida(12, 2, TipoEvento.DISPARO,
+                "Acorazado (7,4) -> Crucero (4,4), -4", MOMENTO));
+        historial.registrar(new EventoPartida(12, 2, TipoEvento.FIN_TURNO, "Termina el turno", MOMENTO));
+
+        List<EventoPartida> eventos = historial.getEventos();
+        assertEquals("[R12] J2 DISPARO: Acorazado (7,4) -> Crucero (4,4), -4", eventos.get(0).aLinea());
+        assertEquals("[R12] J2 FIN_TURNO: Termina el turno", eventos.get(1).aLinea());
+    }
+
+    @Test
+    void aLineaTambienFuncionaConEventosPrivados() {
+        EventoPartida evento = new EventoPartida(3, 1, TipoEvento.MOVIMIENTO, "Crucero (2,5) -> (3,5)", MOMENTO);
+        assertEquals("[R3] J1 MOVIMIENTO: Crucero (2,5) -> (3,5)", evento.aLinea());
+    }
 }
