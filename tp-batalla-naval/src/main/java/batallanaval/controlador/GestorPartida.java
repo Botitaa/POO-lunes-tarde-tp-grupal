@@ -91,6 +91,17 @@ public class GestorPartida implements Partida {
         }
     }
 
+    private EstadoJugador aEstadoJugador(Jugador jugador) {
+
+        return new EstadoJugador(jugador.getNombre(), jugador.getNumero(), jugador.getPuntosMovimiento(), jugador.getPuntosDominacion(), jugador.getBarcosVivos().size(), jugador.getVidaTotal());
+
+    }
+
+    private Jugador rival() {
+
+        return (jugadorActivo == jugador1) ? jugador2 : jugador1;
+    }
+
     @Override
     public void agregarObservador(ObservadorPartida observador) {
         observadores.add(Objects.requireNonNull(observador, "El observador no puede ser nulo."));
@@ -196,17 +207,17 @@ public class GestorPartida implements Partida {
 
     @Override
     public EstadoJugador getJugadorActivo() {
-        throw new UnsupportedOperationException("Pendiente: PAR-15 (#60)");
+        return aEstadoJugador(jugadorActivo);
     }
 
     @Override
     public EstadoJugador getRival() {
-        throw new UnsupportedOperationException("Pendiente: PAR-15 (#60)");
+        return aEstadoJugador(rival());
     }
 
     @Override
     public List<String> getMensajesResumen() {
-        throw new UnsupportedOperationException("Pendiente: PAR-15 (#60)");
+        return jugadorActivo.getResumen().getMensajes();
     }
 
     @Override
