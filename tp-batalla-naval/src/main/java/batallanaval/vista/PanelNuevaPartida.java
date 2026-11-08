@@ -7,9 +7,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.Serial;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Random;
-import java.util.function.BiConsumer;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -25,10 +23,11 @@ import javax.swing.SwingConstants;
  * precargados con los últimos nombres usados y hay un botón para sortear quién es el
  * Jugador 1.
  * <p>
- * El panel no crea la partida ni lee la configuración: recibe los nombres iniciales por
- * constructor y, al confirmar, se los entrega a quien lo creó mediante {@code alIniciar}
- * (en la aplicación, {@code ControladorAplicacion}). Los errores se muestran en la barra
- * de estado de la {@link VentanaPrincipal}, no por consola.
+ * El panel no crea la partida: cuando los nombres son válidos y el jugador toca
+ * "Comenzar", ejecuta el {@link Runnable} que recibió; quien lo creó (en la aplicación,
+ * {@code ControladorAplicacion}) lee entonces los nombres con
+ * {@link #getNombreJugador1()} y {@link #getNombreJugador2()}. Los errores se muestran
+ * en la barra de estado de la {@link VentanaPrincipal}, no por consola.
  */
 public final class PanelNuevaPartida extends JPanel {
 
@@ -39,38 +38,36 @@ public final class PanelNuevaPartida extends JPanel {
     private static final Dimension TAMANIO_BOTON = new Dimension(200, 40);
 
     private final VentanaPrincipal ventana;
-    private final transient BiConsumer<String, String> alIniciar;
+    private final transient Runnable alComenzar;
     private final JTextField campoJugador1 = new JTextField(COLUMNAS_CAMPO);
     private final JTextField campoJugador2 = new JTextField(COLUMNAS_CAMPO);
     private final Random azar = new Random();
 
     /**
-     * @param ventana          ventana desde la que se navega y donde se muestran los errores
-     * @param nombreJugador1   nombre con el que se precarga el Jugador 1 (si es {@code null}, queda vacío)
-     * @param nombreJugador2   nombre con el que se precarga el Jugador 2 (si es {@code null}, queda vacío)
-     * @param alIniciar        acción que recibe (nombre del J1, nombre del J2), ya validados y sin
-     *                         espacios en los bordes, cuando el jugador toca "Comenzar"
-     * @throws NullPointerException si {@code ventana} o {@code alIniciar} son {@code null}
+     * @param ventana        ventana desde la que se navega y donde se muestran los errores
+     * @param nombreJugador1 nombre con el que se precarga el Jugador 1 (si es {@code null}, queda vacío)
+     * @param nombreJugador2 nombre con el que se precarga el Jugador 2 (si es {@code null}, queda vacío)
+     * @param alComenzar     se ejecuta cuando el jugador toca "Comenzar" y los nombres son válidos
+     * @throws NullPointerException si {@code ventana} o {@code alComenzar} son {@code null}
      */
     public PanelNuevaPartida(VentanaPrincipal ventana, String nombreJugador1, String nombreJugador2,
-                             BiConsumer<String, String> alIniciar) {
+                             Runnable alComenzar) {
         this.ventana = Objects.requireNonNull(ventana, "ventana");
-        this.alIniciar = Objects.requireNonNull(alIniciar, "alIniciar");
+        this.alComenzar = Objects.requireNonNull(alComenzar, "alComenzar");
         setLayout(new GridBagLayout());
         armarContenido();
-        precargarNombres(nombreJugador1, nombreJugador2);
-    }
-
-    /**
-     * Reemplaza el contenido de los dos campos. Sirve para volver a precargar los últimos
-     * nombres cuando se vuelve a entrar a esta pantalla.
-     *
-     * @param nombreJugador1 nombre del Jugador 1 (si es {@code null}, el campo queda vacío)
-     * @param nombreJugador2 nombre del Jugador 2 (si es {@code null}, el campo queda vacío)
-     */
-    public void precargarNombres(String nombreJugador1, String nombreJugador2) {
         campoJugador1.setText(Objects.toString(nombreJugador1, ""));
         campoJugador2.setText(Objects.toString(nombreJugador2, ""));
+    }
+
+    /** @return el nombre del Jugador 1, sin espacios en los bordes */
+    public String getNombreJugador1() {
+        return campoJugador1.getText().trim();
+    }
+
+    /** @return el nombre del Jugador 2, sin espacios en los bordes */
+    public String getNombreJugador2() {
+        return campoJugador2.getText().trim();
     }
 
     /**
@@ -79,28 +76,28 @@ public final class PanelNuevaPartida extends JPanel {
      *
      * @param nombre1 nombre del Jugador 1
      * @param nombre2 nombre del Jugador 2
-     * @return el mensaje de error para el jugador, o vacío si los nombres son válidos
+     * @return el mensaje de error para el jugador, o {@code null} si los nombres son válidos
      */
-    static Optional<String> validarNombres(String nombre1, String nombre2) {
+    static String validarNombres(String nombre1, String nombre2) {
         String n1 = nombre1 == null ? "" : nombre1.trim();
         String n2 = nombre2 == null ? "" : nombre2.trim();
 
         if (n1.isEmpty()) {
-            return Optional.of("El nombre del Jugador 1 no puede estar vacío");
+            return "El nombre del Jugador 1 no puede estar vacío";
         }
         if (n2.isEmpty()) {
-            return Optional.of("El nombre del Jugador 2 no puede estar vacío");
+            return "El nombre del Jugador 2 no puede estar vacío";
         }
         if (n1.contains(";")) {
-            return Optional.of("El nombre del Jugador 1 no puede tener el carácter ';'");
+            return "El nombre del Jugador 1 no puede tener el carácter ';'";
         }
         if (n2.contains(";")) {
-            return Optional.of("El nombre del Jugador 2 no puede tener el carácter ';'");
+            return "El nombre del Jugador 2 no puede tener el carácter ';'";
         }
         if (n1.equalsIgnoreCase(n2)) {
-            return Optional.of("Los dos jugadores tienen que tener nombres distintos");
+            return "Los dos jugadores tienen que tener nombres distintos";
         }
-        return Optional.empty();
+        return null;
     }
 
     private void armarContenido() {
@@ -160,23 +157,21 @@ public final class PanelNuevaPartida extends JPanel {
         return boton;
     }
 
-    /** Valida los nombres y, si están bien, se los entrega a quien arma la partida. */
+    /** Valida los nombres y, si están bien, ejecuta la acción que recibió el panel. */
     private void comenzar() {
-        String n1 = campoJugador1.getText().trim();
-        String n2 = campoJugador2.getText().trim();
-        Optional<String> error = validarNombres(n1, n2);
-        if (error.isPresent()) {
-            ventana.mostrarError(error.get());
+        String error = validarNombres(getNombreJugador1(), getNombreJugador2());
+        if (error != null) {
+            ventana.mostrarError(error);
             return;
         }
-        alIniciar.accept(n1, n2);
+        alComenzar.run();
     }
 
     /** Con 50% de probabilidad intercambia los nombres y avisa quién quedó como Jugador 1. */
     private void sortear() {
-        Optional<String> error = validarNombres(campoJugador1.getText(), campoJugador2.getText());
-        if (error.isPresent()) {
-            ventana.mostrarError(error.get());
+        String error = validarNombres(getNombreJugador1(), getNombreJugador2());
+        if (error != null) {
+            ventana.mostrarError(error);
             return;
         }
         if (azar.nextBoolean()) {
@@ -184,6 +179,6 @@ public final class PanelNuevaPartida extends JPanel {
             campoJugador1.setText(campoJugador2.getText());
             campoJugador2.setText(primero);
         }
-        ventana.mostrarMensaje("Sorteo: " + campoJugador1.getText().trim() + " es el Jugador 1");
+        ventana.mostrarMensaje("Sorteo: " + getNombreJugador1() + " es el Jugador 1");
     }
 }

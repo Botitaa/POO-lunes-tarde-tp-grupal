@@ -1,9 +1,8 @@
 package batallanaval.vista;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.Optional;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 
@@ -15,41 +14,41 @@ class PanelNuevaPartidaTest {
 
     @Test
     void nombresValidosNoDevuelvenError() {
-        assertTrue(PanelNuevaPartida.validarNombres("Bota", "Santi").isEmpty());
+        assertNull(PanelNuevaPartida.validarNombres("Bota", "Santi"));
     }
 
     @Test
     void nombreVacioDelJugador1EsError() {
-        Optional<String> error = PanelNuevaPartida.validarNombres("", "Santi");
-        assertEquals("El nombre del Jugador 1 no puede estar vacío", error.orElseThrow());
+        assertEquals("El nombre del Jugador 1 no puede estar vacío",
+                PanelNuevaPartida.validarNombres("", "Santi"));
     }
 
     @Test
     void nombreSoloConEspaciosEsVacio() {
-        Optional<String> error = PanelNuevaPartida.validarNombres("Bota", "   ");
-        assertEquals("El nombre del Jugador 2 no puede estar vacío", error.orElseThrow());
+        assertEquals("El nombre del Jugador 2 no puede estar vacío",
+                PanelNuevaPartida.validarNombres("Bota", "   "));
     }
 
     @Test
     void nombreNuloSeTrataComoVacio() {
-        assertTrue(PanelNuevaPartida.validarNombres(null, "Santi").isPresent());
-        assertTrue(PanelNuevaPartida.validarNombres("Bota", null).isPresent());
+        assertNotNull(PanelNuevaPartida.validarNombres(null, "Santi"));
+        assertNotNull(PanelNuevaPartida.validarNombres("Bota", null));
     }
 
     @Test
     void puntoYComaEsError() {
-        assertTrue(PanelNuevaPartida.validarNombres("Bo;ta", "Santi").isPresent());
-        assertTrue(PanelNuevaPartida.validarNombres("Bota", "San;ti").isPresent());
+        assertNotNull(PanelNuevaPartida.validarNombres("Bo;ta", "Santi"));
+        assertNotNull(PanelNuevaPartida.validarNombres("Bota", "San;ti"));
     }
 
     @Test
     void nombresIgualesSonErrorSinImportarMayusculasNiEspacios() {
-        assertTrue(PanelNuevaPartida.validarNombres("Bota", "Bota").isPresent());
-        assertTrue(PanelNuevaPartida.validarNombres("Bota", "  bOTA ").isPresent());
+        assertNotNull(PanelNuevaPartida.validarNombres("Bota", "Bota"));
+        assertNotNull(PanelNuevaPartida.validarNombres("Bota", "  bOTA "));
     }
 
     @Test
     void nombresParecidosPeroDistintosSonValidos() {
-        assertTrue(PanelNuevaPartida.validarNombres("Bota", "Bota2").isEmpty());
+        assertNull(PanelNuevaPartida.validarNombres("Bota", "Bota2"));
     }
 }
