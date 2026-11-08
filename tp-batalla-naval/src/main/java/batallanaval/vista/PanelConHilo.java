@@ -19,7 +19,7 @@ import javax.swing.SwingUtilities;
  * cualquier otro componente directamente, podría hacerlo justo mientras el EDT lo
  * está dibujando, y la pantalla quedaría rota o inconsistente. Por eso el hilo propio
  * solo espera y, en cada vuelta, le pide al EDT que ejecute {@link #actualizar()}
- * con {@link SwingUtilities#invokeLater(Runnable)}. Todo cambio en componentes Swing
+ * con {@link SwingUtilities#invokeLater(Runnable)}. Cualquier cambio en componentes Swing
  * tiene que hacerse dentro de {@code actualizar()}, y nunca en otro lugar de la subclase
  * que corra en el hilo propio.
  * <p>
