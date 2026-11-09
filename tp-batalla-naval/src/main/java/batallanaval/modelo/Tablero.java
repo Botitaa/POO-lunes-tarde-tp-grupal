@@ -154,11 +154,13 @@ public class Tablero {
         Casilla esquina2 = getCasilla(hasta.getFila(), desde.getColumna());
         return esquina1.bloqueaPaso() && esquina2.bloqueaPaso();
     }
-
     public boolean hayLineaDeVision(Posicion desde, Posicion hasta) {
         if (!estaDentro(desde) || !estaDentro(hasta)) {
             throw new IllegalArgumentException("Una de las posiciones está fuera del tablero");
         }
+        return lineaLibre(desde, hasta) && lineaLibre(hasta, desde);
+    }
+    public boolean lineaLibre(Posicion desde, Posicion hasta) {
         int fila = desde.getFila();
         int columna = desde.getColumna();
         int filaHasta = hasta.getFila();
