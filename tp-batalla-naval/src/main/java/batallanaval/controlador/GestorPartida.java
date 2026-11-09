@@ -3,6 +3,8 @@ package batallanaval.controlador;
 import batallanaval.excepciones.AccionInvalidaException;
 import batallanaval.historial.EventoPartida;
 import batallanaval.historial.HistorialPartida;
+import batallanaval.historial.TipoEvento;
+import java.time.LocalDateTime;
 import batallanaval.modelo.Acorazado;
 import batallanaval.modelo.Barco;
 import batallanaval.modelo.Casilla;
@@ -117,6 +119,19 @@ public class GestorPartida implements Partida {
                 barco.getRangoDisparo(),
                 barco.getEstadisticas().vision(),
                 esPropio);
+
+    }
+
+    private void registrarEvento(TipoEvento tipo,String descripcion){
+
+        EventoPartida evento = new EventoPartida(
+                ronda,
+                jugadorActivo.getNumero(),
+                tipo,
+                descripcion,
+                LocalDateTime.now());
+
+        historial.registrar(evento);
 
     }
 
