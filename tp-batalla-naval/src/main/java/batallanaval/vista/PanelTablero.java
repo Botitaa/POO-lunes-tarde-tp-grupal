@@ -22,12 +22,15 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Panel que extiende de JPanel para representar la grilla de 10x10 del tablero de Batalla Naval.
  * Dibuja cada tipo de casilla, las zonas de despliegue, la zona de dominación,
  * los barcos propios y los enemigos visibles (símbolo, vida y barra de vida, con el color del jugador)
  * y la niebla de guerra sobre las casillas que el jugador no ve.
+ * Cuando hay un barco seleccionado, lo resalta, sombrea las casillas a las que puede llegar
+ * y dibuja la ruta planificada paso a paso con su costo.
  * Al pasar el mouse sobre un barco muestra un tooltip con sus atributos.
  * Todo lo que dibuja se lo pregunta a PartidaTablero: el panel no conoce el Tablero.
  * Implementa ObservadorPartida: quien crea el panel lo registra en la partida con
@@ -63,8 +66,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     }
 
     /**
-     * Dibuja las casillas, las zonas de despliegue, la niebla de guerra, los barcos,
-     * la zona de dominación y el resaltado de la casilla bajo el mouse.
+     * Dibuja las casillas, las zonas de despliegue, la niebla de guerra, las casillas alcanzables,
+     * la ruta planificada, los barcos, el barco seleccionado, la zona de dominación
+     * y el resaltado de la casilla bajo el mouse.
      *
      * @param g contexto gráfico que entrega Swing
      */
@@ -152,10 +156,17 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
             }
         }
 
+        // Casillas alcanzables y ruta planificada del barco seleccionado (debajo de los barcos)
+        dibujarCasillasAlcanzables(g2d, tamanoCelda, inicioX, inicioY);
+        dibujarRuta(g2d, tamanoCelda, inicioX, inicioY);
+
         // Los barcos se dibujan arriba de las casillas ya pintadas.
         // Los enemigos son solo los que la partida dice que el jugador ve (no se recalcula acá).
         dibujarBarcos(g2d, partidaTablero.getBarcosPropios(), tamanoCelda, inicioX, inicioY);
         dibujarBarcos(g2d, partidaTablero.getBarcosEnemigosVisibles(), tamanoCelda, inicioX, inicioY);
+
+        // El barco seleccionado lleva un borde amarillo, arriba de su dibujo
+        dibujarBarcoSeleccionado(g2d, tamanoCelda, inicioX, inicioY);
 
         // La zona de dominación y el hover se dibujan después del for: si se dibujaran
         // adentro, las celdas siguientes les pintarían el borde negro encima.
@@ -239,6 +250,78 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
             return new Color(230, 90, 50);  // Naranja: jugador 1
         }
         return new Color(170, 80, 220);     // Violeta: jugador 2
+    }
+
+    // Selección, casillas alcanzables y ruta 
+
+    /**
+     * Resalta con un borde amarillo el barco seleccionado. Si no hay selección
+     * (la partida devuelve null), no dibuja nada.
+     */
+    private void dibujarBarcoSeleccionado(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
+        EstadoBarco seleccionado = partidaTablero.getBarcoSeleccionado();
+        if (seleccionado == null || seleccionado.posicion() == null) {
+            return;
+        }
+        int x = inicioX + (seleccionado.posicion().getColumna() * tamanoCelda);
+        int y = inicioY + (seleccionado.posicion().getFila() * tamanoCelda);
+        g2d.setColor(Color.YELLOW);
+        g2d.setStroke(new BasicStroke(3));
+        g2d.drawRect(x + 2, y + 2, tamanoCelda - 4, tamanoCelda - 4);
+    }
+
+    /**
+     * Sombrea las casillas a las que puede llegar el barco seleccionado este turno.
+     * El cálculo lo hace la partida (con los puntos de movimiento y los obstáculos);
+     * el panel solo las pinta.
+     */
+    private void dibujarCasillasAlcanzables(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
+        Set<Posicion> alcanzables = partidaTablero.getCasillasAlcanzables();
+        g2d.setColor(new Color(255, 255, 255, 70)); // Blanco semitransparente
+        for (Posicion pos : alcanzables) {
+            int x = inicioX + (pos.getColumna() * tamanoCelda);
+            int y = inicioY + (pos.getFila() * tamanoCelda);
+            g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
+        }
+    }
+
+    /**
+     * Dibuja la ruta planificada: cada paso en celeste con su número de orden (1, 2, 3...)
+     * y, en el último paso, el costo total de la ruta en puntos de movimiento.
+     */
+    private void dibujarRuta(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
+        List<Posicion> ruta = partidaTablero.getRutaPlanificada();
+        if (ruta.isEmpty()) {
+            return;
+        }
+        g2d.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.max(10, tamanoCelda / 3)));
+        FontMetrics medidas = g2d.getFontMetrics();
+        int numeroPaso = 1;
+        for (Posicion pos : ruta) {
+            int x = inicioX + (pos.getColumna() * tamanoCelda);
+            int y = inicioY + (pos.getFila() * tamanoCelda);
+
+            // Fondo celeste del paso
+            g2d.setColor(new Color(135, 206, 250, 180));
+            g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
+
+            // Número del paso, centrado
+            String texto = String.valueOf(numeroPaso);
+            int xTexto = x + (tamanoCelda - medidas.stringWidth(texto)) / 2;
+            int yTexto = y + (tamanoCelda + medidas.getAscent()) / 2 - tamanoCelda / 10;
+            g2d.setColor(new Color(10, 40, 80)); // Azul oscuro, se lee sobre el celeste
+            g2d.drawString(texto, xTexto, yTexto);
+            numeroPaso++;
+        }
+
+        // Costo total de la ruta, chico, abajo del último paso
+        Posicion ultimo = ruta.get(ruta.size() - 1);
+        int x = inicioX + (ultimo.getColumna() * tamanoCelda);
+        int y = inicioY + (ultimo.getFila() * tamanoCelda);
+        String costo = "costo " + partidaTablero.getCostoRuta();
+        g2d.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, Math.max(9, tamanoCelda / 5)));
+        FontMetrics medidasCosto = g2d.getFontMetrics();
+        g2d.drawString(costo, x + (tamanoCelda - medidasCosto.stringWidth(costo)) / 2, y + tamanoCelda - 4);
     }
 
     // Tooltip de barcos 
