@@ -2,12 +2,12 @@ package batallanaval.vista;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Component;
 import java.awt.Container;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -16,7 +16,11 @@ import javax.swing.JButton;
 
 import org.junit.jupiter.api.Test;
 
+import batallanaval.controlador.EstadoJugador;
+import batallanaval.controlador.FasePartida;
 import batallanaval.controlador.PartidaConsulta;
+import batallanaval.controlador.ResultadoPartida;
+import batallanaval.historial.EventoPartida;
 
 class PanelResumenTest {
 
@@ -25,7 +29,7 @@ class PanelResumenTest {
 
     private final List<String> mensajes = new ArrayList<>();
     private final AtomicInteger veces = new AtomicInteger();
-    private final PanelResumen panel = new PanelResumen(partidaConMensajes(mensajes), veces::incrementAndGet);
+    private final PanelResumen panel = new PanelResumen(new PartidaDePrueba(mensajes), veces::incrementAndGet);
 
     @Test
     void conMensajesDevuelveTrueYLosMuestraEnOrden() {
@@ -48,7 +52,7 @@ class PanelResumenTest {
 
     @Test
     void siElOrigenDevuelveNullSeTrataComoVacio() {
-        PanelResumen panelConNull = new PanelResumen(partidaConMensajes(null), () -> { });
+        PanelResumen panelConNull = new PanelResumen(new PartidaDePrueba(null), () -> { });
 
         assertFalse(panelConNull.cargarMensajes());
         assertTrue(panelConNull.getMensajesMostrados().isEmpty());
@@ -81,7 +85,10 @@ class PanelResumenTest {
 
     @Test
     void apretarContinuarEjecutaLaAccionUnaSolaVez() {
-        buscarBoton(panel, "Continuar").doClick();
+        JButton botonContinuar = buscarBoton(panel, "Continuar");
+        assertNotNull(botonContinuar, "el panel tiene que tener un botón Continuar");
+
+        botonContinuar.doClick();
 
         assertEquals(1, veces.get());
     }
@@ -98,23 +105,65 @@ class PanelResumenTest {
     @Test
     void noSeAceptanArgumentosNulos() {
         assertThrows(NullPointerException.class, () -> new PanelResumen(null, () -> { }));
-        assertThrows(NullPointerException.class, () -> new PanelResumen(partidaConMensajes(mensajes), null));
+        assertThrows(NullPointerException.class, () -> new PanelResumen(new PartidaDePrueba(mensajes), null));
     }
 
     /**
-     * Una {@link PartidaConsulta} de prueba que solo responde {@code getMensajesResumen()}, que es lo
-     * único que usa el panel. Así no hace falta escribir los otros métodos de la interfaz.
+     * Una {@link PartidaConsulta} de prueba que solo sabe responder {@code getMensajesResumen()}, que
+     * es lo único que usa el panel. El resto de los métodos no se usan en estos tests.
      */
-    private static PartidaConsulta partidaConMensajes(List<String> mensajes) {
-        return (PartidaConsulta) Proxy.newProxyInstance(
-                PartidaConsulta.class.getClassLoader(),
-                new Class<?>[] { PartidaConsulta.class },
-                (proxy, metodo, argumentos) -> {
-                    if (metodo.getName().equals("getMensajesResumen")) {
-                        return mensajes;
-                    }
-                    throw new UnsupportedOperationException(metodo.getName());
-                });
+    private static final class PartidaDePrueba implements PartidaConsulta {
+
+        private final List<String> mensajes;
+
+        PartidaDePrueba(List<String> mensajes) {
+            this.mensajes = mensajes;
+        }
+
+        @Override
+        public List<String> getMensajesResumen() {
+            return mensajes;
+        }
+
+        @Override
+        public EstadoJugador getJugadorActivo() {
+            return null;
+        }
+
+        @Override
+        public EstadoJugador getRival() {
+            return null;
+        }
+
+        @Override
+        public int getRonda() {
+            return 0;
+        }
+
+        @Override
+        public FasePartida getFase() {
+            return null;
+        }
+
+        @Override
+        public boolean estaTerminada() {
+            return false;
+        }
+
+        @Override
+        public ResultadoPartida getResultado() {
+            return null;
+        }
+
+        @Override
+        public List<EventoPartida> getHistorialVisible() {
+            return List.of();
+        }
+
+        @Override
+        public boolean puedeGuardarse() {
+            return false;
+        }
     }
 
     /** Busca el botón con ese texto en el árbol completo de componentes. */
