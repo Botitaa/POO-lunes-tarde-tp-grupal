@@ -23,6 +23,10 @@ public class Jugador {
             throw new IllegalArgumentException("el nombre no puede ser vacio o null");
         }
 
+        if (nombre.contains(";") || nombre.contains("\n") || nombre.contains("\r")) {
+            throw new IllegalArgumentException("el nombre no puede contener punto y coma ni saltos de linea");
+        }
+
         if (numero != 1 && numero != 2){
             throw new IllegalArgumentException("el numero del jugador tiene que ser 1 o 2");
         }
@@ -44,6 +48,21 @@ public class Jugador {
             }
 
         }
+    }
+
+    public Jugador(int numero, String nombre, List<Barco> flota, int puntosMovimiento, int puntosDominacion, List<String> resumenPendiente) {
+        this(numero, nombre, flota);
+        this.puntosMovimiento = puntosMovimiento;
+        this.puntosDominacion = puntosDominacion;
+        if (resumenPendiente != null) {
+            for (String mensaje : resumenPendiente) {
+                this.resumen.agregarMensaje(mensaje);
+            }
+        }
+    }
+
+    public Jugador(int numero, String nombre, List<Barco> flota, int puntosMovimiento, int puntosDominacion) {
+        this(numero, nombre, flota, puntosMovimiento, puntosDominacion, List.of());
     }
 
     public ResumenTurno getResumen() {

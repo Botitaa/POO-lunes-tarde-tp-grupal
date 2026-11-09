@@ -205,4 +205,23 @@ public class Tablero {
         }
         return true;
     }
+
+    public void convertirEnRestos(Posicion pos) {
+        if (!estaDentro(pos)) {
+            throw new IllegalArgumentException("La posición está fuera del tablero");
+        }
+        grilla[pos.getFila()][pos.getColumna()] = Casilla.RESTOS;
+    }
+
+    public List<Posicion> getRestos() {
+        List<Posicion> restos = new ArrayList<>();
+        for (int fila = 0; fila < FILAS; fila++) {
+            for (int columna = 0; columna < COLUMNAS; columna++) {
+                if (grilla[fila][columna] == Casilla.RESTOS) {
+                    restos.add(new Posicion(fila, columna));
+                }
+            }
+        }
+        return List.copyOf(restos);
+    }
 }
