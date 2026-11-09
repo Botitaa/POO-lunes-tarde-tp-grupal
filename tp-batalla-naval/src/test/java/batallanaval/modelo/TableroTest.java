@@ -645,5 +645,154 @@ class TableroTest {
             // esperado
         }
     }
+    // ---------- hayLineaDeVision ----------
+
+    @Test
+    void conTodoAguaHayVisionEnLineaRecta() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 0), new Posicion(4, 9))); // horizontal
+        assertTrue(tablero.hayLineaDeVision(new Posicion(0, 3), new Posicion(9, 3))); // vertical
+        assertTrue(tablero.hayLineaDeVision(new Posicion(0, 0), new Posicion(9, 9))); // diagonal exacta
+    }
+
+    @Test
+    void conTodoAguaHayVisionEnLineaInclinada() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.hayLineaDeVision(new Posicion(0, 0), new Posicion(2, 5)));
+        assertTrue(tablero.hayLineaDeVision(new Posicion(9, 1), new Posicion(3, 4)));
+    }
+
+    @Test
+    void unaIslaEnElMedioTapaLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertFalse(tablero.hayLineaDeVision(new Posicion(4, 0), new Posicion(4, 9)));
+    }
+
+    @Test
+    void laIslaTapaLaVisionEnLosDosSentidos() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertFalse(tablero.hayLineaDeVision(new Posicion(4, 9), new Posicion(4, 0)));
+    }
+
+    @Test
+    void unaIslaEnDiagonalTapaLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[5][5] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertFalse(tablero.hayLineaDeVision(new Posicion(3, 3), new Posicion(7, 7)));
+    }
+
+    @Test
+    void unaPiedraEnElMedioNoTapaLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 0), new Posicion(4, 9)));
+    }
+
+    @Test
+    void losRestosNoTapanLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.RESTOS;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 0), new Posicion(4, 9)));
+    }
+
+    @Test
+    void unaIslaFueraDeLaLineaNoTapaLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[3][5] = Casilla.ISLA; // una fila arriba de la línea
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 0), new Posicion(4, 9)));
+    }
+
+    @Test
+    void lasCasillasAdyacentesSiempreSeVen() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[3][4] = Casilla.ISLA; // islas alrededor que no están entre las dos
+        grilla[5][4] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 4), new Posicion(4, 5))); // al costado
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 4), new Posicion(3, 5))); // en diagonal
+    }
+
+    @Test
+    void unaCasillaSeVeASiMisma() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 4), new Posicion(4, 4)));
+    }
+
+    @Test
+    void dosIslasQueSeTocanEnDiagonalTapanLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.ISLA;
+        grilla[5][4] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertFalse(tablero.hayLineaDeVision(new Posicion(3, 3), new Posicion(6, 6)));
+    }
+
+    @Test
+    void unaSolaIslaEnLaEsquinaNoTapaLaVisionDiagonal() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(3, 3), new Posicion(6, 6)));
+    }
+
+    @Test
+    void dosPiedrasQueSeTocanEnDiagonalNoTapanLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.PIEDRA;
+        grilla[5][4] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(3, 3), new Posicion(6, 6)));
+    }
+
+    @Test
+    void enElMapaEstandarLaIslaTapaLaVision() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        assertFalse(tablero.hayLineaDeVision(new Posicion(2, 2), new Posicion(5, 2))); // isla en (3,2)
+        assertTrue(tablero.hayLineaDeVision(new Posicion(2, 0), new Posicion(7, 0)));  // columna 0 libre
+    }
+
+    @Test
+    void lineaDeVisionConPosicionFueraDelTableroLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.hayLineaDeVision(new Posicion(4, 4), new Posicion(4, 10));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+    @Test
+    void laVisionEsSimetricaEnElCasoReportado() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        Posicion a = new Posicion(2, 2);
+        Posicion b = new Posicion(3, 4);
+        assertEquals(tablero.hayLineaDeVision(a, b), tablero.hayLineaDeVision(b, a));
+    }
+
+    @Test
+    void laVisionEsSimetricaEnTodoElMapaEstandar() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        for (int fila1 = 0; fila1 < Tablero.FILAS; fila1++) {
+            for (int columna1 = 0; columna1 < Tablero.COLUMNAS; columna1++) {
+                for (int fila2 = 0; fila2 < Tablero.FILAS; fila2++) {
+                    for (int columna2 = 0; columna2 < Tablero.COLUMNAS; columna2++) {
+                        Posicion a = new Posicion(fila1, columna1);
+                        Posicion b = new Posicion(fila2, columna2);
+                        assertEquals(tablero.hayLineaDeVision(a, b), tablero.hayLineaDeVision(b, a),
+                                "La visión no es simétrica entre " + a + " y " + b);
+                    }
+                }
+            }
+        }
+    }
+
 
 }
