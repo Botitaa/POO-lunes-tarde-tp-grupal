@@ -20,12 +20,14 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.util.List;
 import java.util.Objects;
 
 /**
  * Panel que extiende de JPanel para representar la grilla de 10x10 del tablero de Batalla Naval.
- * Dibuja cada tipo de casilla, las zonas de despliegue, la zona de dominación
- * y los barcos propios (símbolo, vida y barra de vida, con el color del jugador).
+ * Dibuja cada tipo de casilla, las zonas de despliegue, la zona de dominación,
+ * los barcos propios y los enemigos visibles (símbolo, vida y barra de vida, con el color del jugador)
+ * y la niebla de guerra sobre las casillas que el jugador no ve.
  * Al pasar el mouse sobre un barco muestra un tooltip con sus atributos.
  * Todo lo que dibuja se lo pregunta a PartidaTablero: el panel no conoce el Tablero.
  * Implementa ObservadorPartida: quien crea el panel lo registra en la partida con
@@ -61,8 +63,8 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     }
 
     /**
-     * Dibuja las casillas, las zonas de despliegue, los barcos propios, la zona de dominación
-     * y el resaltado de la casilla bajo el mouse.
+     * Dibuja las casillas, las zonas de despliegue, la niebla de guerra, los barcos,
+     * la zona de dominación y el resaltado de la casilla bajo el mouse.
      *
      * @param g contexto gráfico que entrega Swing
      */
@@ -127,6 +129,14 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
                     g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
                 }
 
+                // Niebla de guerra: si el jugador no ve esta casilla, la oscurecemos.
+                // El mapa se sigue viendo debajo (el terreno y los restos se ven siempre).
+                // Qué es visible lo decide la partida, el panel solo pregunta.
+                if (!partidaTablero.esVisible(pos)) {
+                    g2d.setColor(new Color(30, 40, 60, 150)); // Azul oscuro grisado, semitransparente
+                    g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
+                }
+
                 // Si la casilla es de la zona de dominación, actualizamos sus límites
                 if (partidaTablero.esZonaDominacion(pos)) {
                     filaMinDominacion = Math.min(filaMinDominacion, fila);
@@ -142,8 +152,10 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
             }
         }
 
-        // Los barcos se dibujan arriba de las casillas ya pintadas
-        dibujarBarcosPropios(g2d, tamanoCelda, inicioX, inicioY);
+        // Los barcos se dibujan arriba de las casillas ya pintadas.
+        // Los enemigos son solo los que la partida dice que el jugador ve (no se recalcula acá).
+        dibujarBarcos(g2d, partidaTablero.getBarcosPropios(), tamanoCelda, inicioX, inicioY);
+        dibujarBarcos(g2d, partidaTablero.getBarcosEnemigosVisibles(), tamanoCelda, inicioX, inicioY);
 
         // La zona de dominación y el hover se dibujan después del for: si se dibujaran
         // adentro, las celdas siguientes les pintarían el borde negro encima.
@@ -174,11 +186,11 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     // Dibujo de barcos 
 
     /**
-     * Dibuja los barcos propios que ya tienen posición. Los datos los pide a la partida
+     * Dibuja los barcos de la lista que ya tienen posición. Los datos llegan de la partida
      * como EstadoBarco (solo lectura): el panel nunca recibe un Barco del modelo.
      */
-    private void dibujarBarcosPropios(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
-        for (EstadoBarco barco : partidaTablero.getBarcosPropios()) {
+    private void dibujarBarcos(Graphics2D g2d, List<EstadoBarco> barcos, int tamanoCelda, int inicioX, int inicioY) {
+        for (EstadoBarco barco : barcos) {
             Posicion pos = barco.posicion();
             if (pos != null) { // durante el despliegue puede haber barcos sin ubicar
                 int x = inicioX + (pos.getColumna() * tamanoCelda);
