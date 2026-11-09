@@ -116,7 +116,7 @@ public class GestorPartida implements Partida {
                 barco.estaHabilidadActiva(),
                 barco.getRangoDisparo(),
                 barco.getEstadisticas().vision(),
-                esPropio);`
+                esPropio);
 
     }
 
