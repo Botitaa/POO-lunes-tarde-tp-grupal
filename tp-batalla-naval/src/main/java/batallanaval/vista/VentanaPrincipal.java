@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
@@ -18,6 +20,9 @@ import javax.swing.JPanel;
  * pantallas (una por valor de {@link Pantalla}) y una barra de estado abajo para
  * avisos y errores.
  * <p>
+ * Si una pantalla es un {@link PanelConHilo}, la ventana le inicia el hilo cuando la muestra
+ * y se lo detiene cuando deja de mostrarla o cuando se cierra la ventana.
+ * <p>
  * La ventana no sabe nada de las reglas ni de la partida: solo muestra la pantalla
  * que se le pide. Quien arma las pantallas y las registra es
  * {@code ControladorAplicacion}.
@@ -25,14 +30,16 @@ import javax.swing.JPanel;
  * Todos los métodos se tienen que llamar desde el EDT
  * ({@code SwingUtilities.invokeLater}).
  */
-public class VentanaPrincipal extends JFrame {
+public final class VentanaPrincipal extends JFrame {
+
+    private static final long serialVersionUID = 1L;
 
     private static final String TITULO = "Batalla Naval Táctica";
     private static final Color COLOR_ERROR = new Color(180, 30, 30);
 
     private final CardLayout disposicion = new CardLayout();
     private final JPanel contenedor = new JPanel(disposicion);
-    private final Map<Pantalla, JPanel> pantallas = new EnumMap<>(Pantalla.class);
+    private final transient Map<Pantalla, JPanel> pantallas = new EnumMap<>(Pantalla.class);
     private final JLabel barraEstado = new JLabel(" ");
     private final Color colorMensaje;
     private Pantalla pantallaActual;
@@ -51,6 +58,14 @@ public class VentanaPrincipal extends JFrame {
         setLayout(new BorderLayout());
         add(contenedor, BorderLayout.CENTER);
         add(barraEstado, BorderLayout.SOUTH);
+
+        // Al cerrar la ventana con la X se frena el hilo de la pantalla actual.
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                detenerHiloDeLaPantallaActual();
+            }
+        });
     }
 
     /**
@@ -83,9 +98,34 @@ public class VentanaPrincipal extends JFrame {
         if (!pantallas.containsKey(pantalla)) {
             throw new IllegalStateException("No hay un panel registrado para " + pantalla);
         }
+        detenerHiloDeLaPantallaActual();
         disposicion.show(contenedor, pantalla.name());
         pantallaActual = pantalla;
+        iniciarHiloDeLaPantallaActual();
         mostrarMensaje(" ");
+    }
+
+    /** Libera la ventana, y antes detiene el hilo de la pantalla actual (lo usa el botón Salir). */
+    @Override
+    public void dispose() {
+        detenerHiloDeLaPantallaActual();
+        super.dispose();
+    }
+
+    /** Si la pantalla que se está mostrando es un {@link PanelConHilo}, le detiene el hilo. */
+    private void detenerHiloDeLaPantallaActual() {
+        JPanel panel = pantallas.get(pantallaActual);
+        if (panel instanceof PanelConHilo) {
+            ((PanelConHilo) panel).detener();
+        }
+    }
+
+    /** Si la pantalla que se está mostrando es un {@link PanelConHilo}, le inicia el hilo. */
+    private void iniciarHiloDeLaPantallaActual() {
+        JPanel panel = pantallas.get(pantallaActual);
+        if (panel instanceof PanelConHilo) {
+            ((PanelConHilo) panel).iniciar();
+        }
     }
 
     /** @return la pantalla que se está mostrando, o {@code null} si todavía no se mostró ninguna */
