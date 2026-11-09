@@ -769,6 +769,30 @@ class TableroTest {
             // esperado
         }
     }
+    @Test
+    void laVisionEsSimetricaEnElCasoReportado() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        Posicion a = new Posicion(2, 2);
+        Posicion b = new Posicion(3, 4);
+        assertEquals(tablero.hayLineaDeVision(a, b), tablero.hayLineaDeVision(b, a));
+    }
+
+    @Test
+    void laVisionEsSimetricaEnTodoElMapaEstandar() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        for (int fila1 = 0; fila1 < Tablero.FILAS; fila1++) {
+            for (int columna1 = 0; columna1 < Tablero.COLUMNAS; columna1++) {
+                for (int fila2 = 0; fila2 < Tablero.FILAS; fila2++) {
+                    for (int columna2 = 0; columna2 < Tablero.COLUMNAS; columna2++) {
+                        Posicion a = new Posicion(fila1, columna1);
+                        Posicion b = new Posicion(fila2, columna2);
+                        assertEquals(tablero.hayLineaDeVision(a, b), tablero.hayLineaDeVision(b, a),
+                                "La visión no es simétrica entre " + a + " y " + b);
+                    }
+                }
+            }
+        }
+    }
 
 
 }
