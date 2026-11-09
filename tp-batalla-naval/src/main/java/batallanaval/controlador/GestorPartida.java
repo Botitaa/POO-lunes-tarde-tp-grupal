@@ -102,6 +102,24 @@ public class GestorPartida implements Partida {
         return (jugadorActivo == jugador1) ? jugador2 : jugador1;
     }
 
+    private EstadoBarco aEstadoBarco(Barco barco, int numeroJugador, boolean esPropio) {
+
+        return  new EstadoBarco(barco.getId(),
+                numeroJugador,
+                barco.getSimbolo(),
+                barco.getPosicion(),
+                barco.getVida(),
+                barco.getVidaMaxima(),
+                barco.getCasillasRestantes(),
+                esPropio ? barco.getCooldownDisparo() : 0,
+                esPropio ? barco.getCooldownHabilidad() : 0,
+                barco.estaHabilidadActiva(),
+                barco.getRangoDisparo(),
+                barco.getEstadisticas().vision(),
+                esPropio);`
+
+    }
+
     @Override
     public void agregarObservador(ObservadorPartida observador) {
         observadores.add(Objects.requireNonNull(observador, "El observador no puede ser nulo."));
@@ -471,12 +489,28 @@ public class GestorPartida implements Partida {
 
     @Override
     public List<EstadoBarco> getBarcosPropios() {
-        throw new UnsupportedOperationException("Pendiente: PAR-15 (#60)");
+
+        List<EstadoBarco> barcosPropios = new ArrayList<>();
+
+        for (Barco barco: jugadorActivo.getBarcosVivos()){
+            barcosPropios.add(aEstadoBarco(barco, jugadorActivo.getNumero(), true));
+        }
+
+        return List.copyOf(barcosPropios);
+
     }
 
     @Override
     public List<EstadoBarco> getBarcosEnemigosVisibles() {
-        throw new UnsupportedOperationException("Pendiente: PAR-15 (#60)");
+
+        List<EstadoBarco> barcosEnemigosVisibles = new ArrayList<>();
+
+//        for (Barco barco: rival().getBarcosVivos()){
+//            barcosEnemigosVisibles.add(aEstadoBarco(barco, jugadorActivo.getNumero(), false));
+//        }
+// cuando marcso termine sigo me falta una depen
+
+        return List.copyOf(barcosEnemigosVisibles);
     }
 
     @Override
