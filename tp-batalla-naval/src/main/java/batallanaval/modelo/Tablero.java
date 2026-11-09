@@ -155,6 +155,54 @@ public class Tablero {
         return esquina1.bloqueaPaso() && esquina2.bloqueaPaso();
     }
 
+    public boolean hayLineaDeVision(Posicion desde, Posicion hasta) {
+        if (!estaDentro(desde) || !estaDentro(hasta)) {
+            throw new IllegalArgumentException("Una de las posiciones está fuera del tablero");
+        }
+        int fila = desde.getFila();
+        int columna = desde.getColumna();
+        int filaHasta = hasta.getFila();
+        int columnaHasta = hasta.getColumna();
 
+        int distanciaFilas = Math.abs(filaHasta - fila);
+        int distanciaColumnas = Math.abs(columnaHasta - columna);
+        int pasoFila;
+        if (fila < filaHasta) {
+            pasoFila = 1;
+        } else {
+            pasoFila = -1;
+        }
+        int pasoColumna;
+        if (columna < columnaHasta) {
+            pasoColumna = 1;
+        } else {
+            pasoColumna = -1;
+        }
+        int error = distanciaColumnas - distanciaFilas;
 
+        while (fila != filaHasta || columna != columnaHasta) {
+            int filaSiguiente = fila;
+            int columnaSiguiente = columna;
+            int doble = 2 * error;
+            if (doble > -distanciaFilas) {
+                error = error - distanciaFilas;
+                columnaSiguiente = columna + pasoColumna;
+            }
+            if (doble < distanciaColumnas) {
+                error = error + distanciaColumnas;
+                filaSiguiente = fila + pasoFila;
+            }
+            boolean pasoDiagonal = filaSiguiente != fila && columnaSiguiente != columna;
+            if (pasoDiagonal && getCasilla(fila, columnaSiguiente).bloqueaVision() && getCasilla(filaSiguiente, columna).bloqueaVision()){
+                return false;}
+
+            fila = filaSiguiente;
+            columna = columnaSiguiente;
+            boolean esElDestino = fila == filaHasta && columna == columnaHasta;
+            if(!esElDestino && getCasilla(fila, columnaSiguiente).bloqueaVision()){
+                return false;
+            }
+        }
+        return true;
+    }
 }
