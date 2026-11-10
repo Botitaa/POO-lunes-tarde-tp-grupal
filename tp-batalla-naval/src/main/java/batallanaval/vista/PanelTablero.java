@@ -3,12 +3,20 @@ package batallanaval.vista;
 import batallanaval.controlador.EstadoBarco;
 import batallanaval.controlador.FasePartida;
 import batallanaval.controlador.ObservadorPartida;
+import batallanaval.controlador.PartidaCombate;
 import batallanaval.controlador.PartidaTablero;
 import batallanaval.controlador.ResultadoPartida;
 import batallanaval.modelo.Posicion;
 import batallanaval.modelo.Casilla;
+import batallanaval.excepciones.AccionInvalidaException;
 
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.JComponent;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -17,6 +25,8 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -32,6 +42,8 @@ import java.util.Set;
  * Cuando hay un barco seleccionado, lo resalta, sombrea las casillas a las que puede llegar
  * y dibuja la ruta planificada paso a paso con su costo.
  * Al pasar el mouse sobre un barco muestra un tooltip con sus atributos.
+ * Atajos de teclado (key bindings): Esc cancela la selección, Backspace deshace el último paso
+ * de la ruta y Enter confirma el movimiento.
  * Todo lo que dibuja se lo pregunta a PartidaTablero: el panel no conoce el Tablero.
  * Implementa ObservadorPartida: quien crea el panel lo registra en la partida con
  * agregarObservador, y desde ahí el panel se redibuja ante cada cambio.
@@ -44,6 +56,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     // Parte de la partida que necesita el panel para dibujar (ISP: no recibe la Partida entera)
     private final PartidaTablero partidaTablero;
 
+    // Acciones del turno que disparan los atajos de teclado (ISP: solo las de combate)
+    private final PartidaCombate partidaCombate;
+
     // Guarda la posición de la celda sobre la cual está el mouse actualmente
     private Posicion casillaHover = null;
 
@@ -51,10 +66,12 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
      * Crea el panel del tablero.
      *
      * @param partidaTablero consultas de la partida de las que se leen las casillas y las zonas.
-     * @throws NullPointerException si partidaTablero es nulo.
+     * @param partidaCombate acciones del turno que llaman los atajos de teclado.
+     * @throws NullPointerException si alguno de los dos es nulo.
      */
-    public PanelTablero(PartidaTablero partidaTablero) {
+    public PanelTablero(PartidaTablero partidaTablero, PartidaCombate partidaCombate) {
         this.partidaTablero = Objects.requireNonNull(partidaTablero, "La partida no puede ser nula.");
+        this.partidaCombate = Objects.requireNonNull(partidaCombate, "La partida no puede ser nula.");
         setBackground(Color.DARK_GRAY);
 
         // Activa los tooltips del panel; el texto de cada uno lo arma getToolTipText(MouseEvent)
@@ -63,6 +80,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         // Registramos los listeners para las acciones del mouse
         addMouseListener(this);
         addMouseMotionListener(this);
+
+        // Atajos de teclado: Esc, Backspace y Enter
+        registrarAtajosDeTeclado();
     }
 
     /**
@@ -322,6 +342,61 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         g2d.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, Math.max(9, tamanoCelda / 5)));
         FontMetrics medidasCosto = g2d.getFontMetrics();
         g2d.drawString(costo, x + (tamanoCelda - medidasCosto.stringWidth(costo)) / 2, y + tamanoCelda - 4);
+    }
+
+    // Atajos de teclado 
+
+    /**
+     * Registra los atajos con key bindings (InputMap + ActionMap) en lugar de KeyListener:
+     * así funcionan aunque el foco esté en otro componente de la ventana (por ejemplo, un botón).
+     * Cada tecla se asocia a un nombre en el InputMap, y cada nombre a una acción en el ActionMap.
+     */
+    private void registrarAtajosDeTeclado() {
+        InputMap teclas = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap acciones = getActionMap();
+
+        teclas.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cancelarSeleccion");
+        teclas.put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "deshacerPaso");
+        teclas.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "confirmarMovimiento");
+
+        acciones.put("cancelarSeleccion", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    partidaCombate.cancelarSeleccion();
+                } catch (AccionInvalidaException ex) {
+                    mostrarError(ex);
+                }
+            }
+        });
+        acciones.put("deshacerPaso", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    partidaCombate.deshacerPaso();
+                } catch (AccionInvalidaException ex) {
+                    mostrarError(ex);
+                }
+            }
+        });
+        acciones.put("confirmarMovimiento", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    partidaCombate.confirmarMovimiento();
+                } catch (AccionInvalidaException ex) {
+                    mostrarError(ex);
+                }
+            }
+        });
+    }
+
+    /**
+     * Muestra en un diálogo el mensaje de una acción rechazada por la partida.
+     * El panel no decide si la acción es válida: la intenta y, si la partida la rechaza, avisa.
+     */
+    private void mostrarError(AccionInvalidaException ex) {
+        JOptionPane.showMessageDialog(this, ex.getMessage(), "Acción no válida", JOptionPane.WARNING_MESSAGE);
     }
 
     // Tooltip de barcos 
