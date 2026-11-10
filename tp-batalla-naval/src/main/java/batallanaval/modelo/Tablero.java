@@ -160,7 +160,7 @@ public class Tablero {
         }
         return lineaLibre(desde, hasta) && lineaLibre(hasta, desde);
     }
-    public boolean lineaLibre(Posicion desde, Posicion hasta) {
+    private boolean lineaLibre(Posicion desde, Posicion hasta) {
         int fila = desde.getFila();
         int columna = desde.getColumna();
         int filaHasta = hasta.getFila();
