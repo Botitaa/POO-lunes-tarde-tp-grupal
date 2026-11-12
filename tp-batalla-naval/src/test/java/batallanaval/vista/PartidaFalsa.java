@@ -47,6 +47,9 @@ class PartidaFalsa implements Partida {
 
     final List<ObservadorPartida> observadores = new ArrayList<>();
 
+    /** Eventos que devuelve {@link #getHistorialVisible()} (ya filtrados, como los da la partida real). */
+    final List<EventoPartida> historial = new ArrayList<>();
+
     /** Barco propio de ejemplo: un crucero sano con la habilidad disponible. */
     static EstadoBarco crucero(int id, Posicion posicion) {
         return new EstadoBarco(id, 1, 'C', posicion, 5, 5, 3, 0, 0, false, 4, 3, true);
@@ -148,7 +151,7 @@ class PartidaFalsa implements Partida {
 
     @Override
     public List<EventoPartida> getHistorialVisible() {
-        return List.of();
+        return List.copyOf(historial);
     }
 
     @Override
