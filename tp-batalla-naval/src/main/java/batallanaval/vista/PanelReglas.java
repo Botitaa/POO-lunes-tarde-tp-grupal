@@ -138,7 +138,8 @@ public final class PanelReglas extends JPanel {
         add(new JScrollPane(texto), BorderLayout.CENTER);
 
         JButton botonVolver = new JButton("Volver");
-        botonVolver.addActionListener(e -> ventana.mostrar(Pantalla.INICIO));
+        botonVolver.addActionListener(
+                EjecutorAcciones.alTocar(() -> ventana.mostrar(Pantalla.INICIO), ventana::mostrarError));
         JPanel pie = new JPanel(new FlowLayout(FlowLayout.CENTER));
         pie.add(botonVolver);
         add(pie, BorderLayout.SOUTH);
