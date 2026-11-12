@@ -35,8 +35,12 @@ class PartidaFalsa implements Partida {
     int costoRuta = 0;
     List<EstadoBarco> objetivos = new ArrayList<>();
 
-    /** Si no es {@code null}, cualquier acción del turno la lanza (como si la partida la rechazara). */
-    AccionInvalidaException rechazo = null;
+    /**
+     * Si no es {@code null}, cualquier acción del turno la lanza. Una {@link AccionInvalidaException}
+     * simula que la partida rechazó la acción; cualquier otra {@code RuntimeException} simula un
+     * error de programación (por ejemplo, un {@code IllegalStateException}).
+     */
+    RuntimeException rechazo = null;
 
     // Contadores de las acciones pedidas
     int vecesConfirmarMovimiento;
