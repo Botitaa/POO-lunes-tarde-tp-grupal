@@ -27,6 +27,7 @@ class PartidaFalsa implements Partida {
     // Estado que lee la vista (lo cambia cada test)
     FasePartida fase = FasePartida.EN_JUEGO;
     boolean terminada = false;
+    boolean puedeGuardarse = false;
     int ronda = 1;
     EstadoJugador activo = new EstadoJugador("Bota", 1, 6, 0, 6, 34);
     EstadoJugador rival = new EstadoJugador("Santi", 2, 6, 0, 6, 34);
@@ -153,7 +154,7 @@ class PartidaFalsa implements Partida {
 
     @Override
     public boolean puedeGuardarse() {
-        return false;
+        return puedeGuardarse;
     }
 
     // PartidaTablero
