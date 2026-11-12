@@ -327,7 +327,7 @@ Una sola ventana con `CardLayout`. Cada pantalla es un `JPanel` que recibe lo qu
 | `PanelCargarPartida` | `JPanel` | `JTable` con los guardados (`listar()`): nombre, jugadores, ronda, fecha; botones Cargar y Borrar. |
 | `PanelEstadisticas` | `JPanel` | `JTable` con el ranking de `CalculadoraRanking`. |
 | `PanelReglas` | `JPanel` | Texto de reglas en un `JScrollPane`. |
-| `BarraMenuJuego` | `extends JMenuBar` | Partida → Guardar, Cargar, Abandonar (con confirmación); Ayuda → Reglas. |
+| `BarraMenuJuego` | `extends JMenuBar implements ObservadorPartida` | Partida → Guardar (Ctrl+S), Cargar (Ctrl+O), Abandonar (con confirmación); Ayuda → Reglas (F1). `BarraMenuJuego(Runnable alGuardar, Runnable alCargar, Runnable alAbandonar, Runnable alVerReglas)`; `mostrarPartida(PartidaConsulta)` (`null` = sin partida) y `actualizar()`. Guardar se habilita solo con `puedeGuardarse()`; Abandonar, con una partida sin terminar; Cargar y Reglas, siempre. La instala `ControladorAplicacion` con `ventana.setJMenuBar(barra)`. |
 | `TareaGuardar` | `implements Runnable` | Se ejecuta en un `Thread` propio para no congelar la ventana. `run()` hace `try { repositorio.guardar(...) } catch (PersistenciaException e) { invokeLater(mostrar error) } finally { invokeLater(volver a habilitar los botones) }`. |
 | `TareaCargar` | `implements Runnable` | Carga en un `Thread` propio; con `invokeLater` entrega la partida a `ControladorAplicacion` o muestra el error. |
 
