@@ -320,8 +320,8 @@ Una sola ventana con `CardLayout`. Cada pantalla es un `JPanel` que recibe lo qu
 | `PanelDespliegue` | `JPanel` | `PanelTablero` en modo DESPLIEGUE + lista de barcos sin ubicar + Confirmar despliegue (habilitado con los 6). |
 | `PanelBlackout` | `JPanel` | Fondo negro, "Turno de X", botón Listo y botón Guardar partida (solo acá se puede guardar). |
 | `PanelResumen` | `JPanel` | Mensajes de `getMensajesResumen()` y botón Continuar; se saltea si está vacío. |
-| `PanelJuego` | `JPanel` | `PanelTablero` en el centro + `PanelLateral` a la derecha + `PanelHistorial` abajo (plegable). |
-| `PanelLateral` | `JPanel` | Barco seleccionado (tipo, vida, casillas, cooldowns), puntos de movimiento, dominación de ambos, ronda; botones Confirmar movimiento, Usar habilidad, Deshacer paso, Terminar turno, habilitados según el estado. |
+| `PanelJuego` | `JPanel implements ObservadorPartida` | `PanelTablero` en el centro + `PanelLateral` a la derecha + `PanelHistorial` abajo (plegable). `PanelJuego(Partida, Consumer<String> alError)`; reenvía los avisos de la partida a sus paneles, así se registra un solo observador. |
+| `PanelLateral` | `JPanel implements ObservadorPartida` | Barco seleccionado (tipo, vida, casillas, cooldowns), puntos de movimiento, dominación de ambos, ronda; botones Confirmar movimiento, Deshacer paso, Usar habilidad, Disparar (con la lista de `getObjetivosValidos()`) y Terminar turno, habilitados según el estado. `PanelLateral(Partida, Consumer<String> alError)`; los rechazos de la partida van a `alError` (barra de estado). |
 | `PanelHistorial` | `JPanel` | `JList` con `getHistorialVisible()`, último evento abajo. |
 | `PanelFinPartida` | `JPanel` | Ganador, motivo, rondas; botones Ver historial, Abrir historial exportado, Volver al inicio. |
 | `PanelCargarPartida` | `JPanel` | `JTable` con los guardados (`listar()`): nombre, jugadores, ronda, fecha; botones Cargar y Borrar. |
