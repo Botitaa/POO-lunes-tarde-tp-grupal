@@ -104,7 +104,7 @@ class PartidaFalsa implements Partida {
         aplicar(() -> vecesTerminarTurno++);
     }
 
-    /** Lo usa PanelTablero (Esc). Sin {@code @Override} a propósito: todavía no está en la interfaz. */
+    @Override
     public void cancelarSeleccion() {
         aplicar(() -> seleccionado = null);
     }
