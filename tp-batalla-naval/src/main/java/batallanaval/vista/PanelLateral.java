@@ -26,6 +26,7 @@ import batallanaval.controlador.EstadoJugador;
 import batallanaval.controlador.FasePartida;
 import batallanaval.controlador.ObservadorPartida;
 import batallanaval.controlador.Partida;
+import batallanaval.controlador.PartidaConsulta;
 import batallanaval.controlador.ResultadoPartida;
 import batallanaval.excepciones.AccionInvalidaException;
 import batallanaval.modelo.Posicion;
@@ -48,19 +49,30 @@ import batallanaval.modelo.Posicion;
  * partida rechaza la acción, el mensaje de la excepción se le pasa a {@code alError}, que
  * quien arma el panel conecta con la barra de estado de la ventana.
  * <p>
- * Implementa {@link ObservadorPartida}: cada vez que la partida avisa un cambio, el panel
- * vuelve a leer todo con {@link #actualizar()}, siempre en el EDT.
+ * <b>Dos formas de refrescarse.</b> Hereda de {@link PanelConHilo}, así que tiene su propio hilo
+ * ({@link #iniciar()} / {@link #detener()}): cada {@value #INTERVALO_MS} ms se ejecuta
+ * {@link #actualizar()} en el EDT y refresca el <i>marcador</i> (turno, ronda, puntos de
+ * movimiento y dominación de ambos jugadores), leyendo solo de {@link PartidaConsulta}.
+ * Además implementa {@link ObservadorPartida}: cuando la partida avisa un cambio (selección,
+ * ruta, disparo...) se vuelve a leer todo, incluida la ficha del barco y los botones, con
+ * {@link #refrescarTodo()}. La ficha y la lista de objetivos no se tocan en cada vuelta del
+ * hilo para no pisar la lista desplegada mientras el jugador elige a quién disparar.
  */
-public final class PanelLateral extends JPanel implements ObservadorPartida {
+public final class PanelLateral extends PanelConHilo implements ObservadorPartida {
 
     @Serial
     private static final long serialVersionUID = 1L;
+
+    /** Milisegundos entre una actualización del marcador y la siguiente. */
+    static final int INTERVALO_MS = 500;
 
     private static final int ANCHO = 270;
     private static final String SIN_DATO = "-";
 
     // Usa tres de las cuatro interfaces (consulta, tablero y combate): por eso recibe la Partida entera.
     private final transient Partida partida;
+    // El marcador solo lee estado general: lo pide por la interfaz chica (ISP), no por la Partida entera.
+    private final transient PartidaConsulta consulta;
     private final transient Consumer<String> alError;
 
     // Encabezado
@@ -98,6 +110,7 @@ public final class PanelLateral extends JPanel implements ObservadorPartida {
      */
     public PanelLateral(Partida partida, Consumer<String> alError) {
         this.partida = Objects.requireNonNull(partida, "partida");
+        this.consulta = partida;
         this.alError = Objects.requireNonNull(alError, "alError");
 
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -109,17 +122,33 @@ public final class PanelLateral extends JPanel implements ObservadorPartida {
         armarBotones();
         conectarBotones();
 
-        actualizar();
+        refrescarTodo();
     }
 
     /**
-     * Vuelve a leer el estado de la partida y refresca los textos y los botones.
-     * Se tiene que llamar desde el EDT (los avisos de la partida ya pasan por
+     * Paso del hilo propio: refresca el marcador (turno, ronda, puntos de movimiento y
+     * dominación de ambos jugadores). Lo ejecuta el EDT cada {@value #INTERVALO_MS} ms.
+     * El panel no calcula nada: muestra lo que le devuelve la {@link PartidaConsulta}.
+     */
+    @Override
+    protected void actualizar() {
+        actualizarMarcador();
+    }
+
+    /** @return {@value #INTERVALO_MS}: el marcador se refresca dos veces por segundo */
+    @Override
+    protected int getIntervaloMs() {
+        return INTERVALO_MS;
+    }
+
+    /**
+     * Vuelve a leer todo el estado de la partida y refresca el marcador, la ficha del barco y
+     * los botones. Se tiene que llamar desde el EDT (los avisos de la partida ya pasan por
      * {@code invokeLater} antes de llegar acá).
      */
-    public void actualizar() {
+    void refrescarTodo() {
         boolean enJuego = partida.getFase() == FasePartida.EN_JUEGO && !partida.estaTerminada();
-        actualizarEncabezado();
+        actualizarMarcador();
 
         if (!enJuego) {
             // Fuera del combate no se pregunta nada del turno: se muestra la ficha vacía y todo bloqueado.
@@ -187,7 +216,7 @@ public final class PanelLateral extends JPanel implements ObservadorPartida {
     }
 
     private void actualizarEnEdt() {
-        SwingUtilities.invokeLater(this::actualizar);
+        SwingUtilities.invokeLater(this::refrescarTodo);
     }
 
     // Armado de la interfaz (se hace una sola vez, en el constructor)
@@ -264,10 +293,10 @@ public final class PanelLateral extends JPanel implements ObservadorPartida {
 
     // Refresco de cada parte
 
-    private void actualizarEncabezado() {
-        EstadoJugador activo = partida.getJugadorActivo();
-        EstadoJugador rival = partida.getRival();
-        etiquetaRonda.setText("Ronda: " + partida.getRonda());
+    private void actualizarMarcador() {
+        EstadoJugador activo = consulta.getJugadorActivo();
+        EstadoJugador rival = consulta.getRival();
+        etiquetaRonda.setText("Ronda: " + consulta.getRonda());
         if (activo == null || rival == null) {
             etiquetaTurno.setText("Turno de " + SIN_DATO);
             etiquetaPuntosMovimiento.setText("Puntos de movimiento: " + SIN_DATO);
