@@ -132,8 +132,8 @@ public final class PanelNuevaPartida extends JPanel {
         add(campoJugador2, c);
 
         // Enter en cualquiera de los dos campos equivale a tocar "Comenzar".
-        campoJugador1.addActionListener(e -> comenzar());
-        campoJugador2.addActionListener(e -> comenzar());
+        campoJugador1.addActionListener(EjecutorAcciones.alTocar(this::comenzar, ventana::mostrarError));
+        campoJugador2.addActionListener(EjecutorAcciones.alTocar(this::comenzar, ventana::mostrarError));
 
         c.gridx = 0;
         c.gridy = 3;
@@ -153,7 +153,9 @@ public final class PanelNuevaPartida extends JPanel {
     private JButton crearBoton(String texto, Runnable accion) {
         JButton boton = new JButton(texto);
         boton.setPreferredSize(TAMANIO_BOTON);
-        boton.addActionListener(e -> accion.run());
+        // Si la acción falla (por ejemplo, al crear la partida en alComenzar), se avisa en la
+        // barra de estado y la pantalla sigue andando para que el jugador lo intente de nuevo.
+        boton.addActionListener(EjecutorAcciones.alTocar(accion, ventana::mostrarError));
         return boton;
     }
 

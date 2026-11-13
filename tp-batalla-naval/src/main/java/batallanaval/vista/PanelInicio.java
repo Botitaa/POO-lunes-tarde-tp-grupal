@@ -60,7 +60,9 @@ public class PanelInicio extends JPanel {
     private JButton crearBoton(String texto, Runnable accion) {
         JButton boton = new JButton(texto);
         boton.setPreferredSize(TAMANIO_BOTON);
-        boton.addActionListener(e -> accion.run());
+        // Si la acción falla (por ejemplo, una pantalla que todavía no está registrada),
+        // se avisa en la barra de estado y el menú sigue andando.
+        boton.addActionListener(EjecutorAcciones.alTocar(accion, ventana::mostrarError));
         return boton;
     }
 
