@@ -2,6 +2,7 @@ package batallanaval.vista;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -99,7 +100,7 @@ class PanelLateralTest {
         partida.ruta.add(new Posicion(2, 4));
         partida.ruta.add(new Posicion(3, 4));
         partida.costoRuta = 4;
-        panel.actualizar();
+        panel.refrescarTodo();
 
         assertTrue(boton(panel, "Confirmar movimiento").isEnabled());
         assertTrue(boton(panel, "Deshacer paso").isEnabled());
@@ -113,11 +114,11 @@ class PanelLateralTest {
         assertTrue(boton(panel, "Usar habilidad").isEnabled(), "disponible: se puede tocar");
 
         partida.seleccionado = new EstadoBarco(2, 1, 'C', ORIGEN, 5, 5, 3, 0, 3, false, 4, 3, true);
-        panel.actualizar();
+        panel.refrescarTodo();
         assertFalse(boton(panel, "Usar habilidad").isEnabled(), "en espera: deshabilitado");
 
         partida.seleccionado = new EstadoBarco(2, 1, 'D', ORIGEN, 3, 3, 4, 0, 0, true, 2, 2, true);
-        panel.actualizar();
+        panel.refrescarTodo();
         assertFalse(boton(panel, "Usar habilidad").isEnabled(), "ya activa este turno: deshabilitado");
         assertEquals("Habilidad: activa este turno", texto(panel, "etiquetaHabilidad"));
     }
@@ -129,7 +130,7 @@ class PanelLateralTest {
         assertFalse(boton(panel, "Disparar").isEnabled());
 
         partida.objetivos.add(PartidaFalsa.destructorEnemigo(8, new Posicion(4, 4), 2));
-        panel.actualizar();
+        panel.refrescarTodo();
 
         assertTrue(boton(panel, "Disparar").isEnabled());
         assertEquals(1, combo(panel).getItemCount());
@@ -193,7 +194,7 @@ class PanelLateralTest {
         PanelLateral panel = crearPanel();
         combo(panel).setSelectedIndex(1);
 
-        panel.actualizar();
+        panel.refrescarTodo();
 
         assertEquals("Destructor (4,6) - vida 1/3", combo(panel).getSelectedItem().toString());
     }
@@ -297,6 +298,84 @@ class PanelLateralTest {
     void noSeAceptanArgumentosNulos() {
         assertThrows(NullPointerException.class, () -> new PanelLateral(null, errores::add));
         assertThrows(NullPointerException.class, () -> new PanelLateral(partida, null));
+    }
+
+    // Hilo propio (PanelConHilo)
+
+    @Test
+    void esUnPanelConHiloQueNoArrancaSolo() {
+        PanelLateral panel = crearPanel();
+
+        assertInstanceOf(PanelConHilo.class, panel);
+        assertFalse(panel.estaCorriendo(), "el hilo lo inicia quien muestra la pantalla, no el constructor");
+    }
+
+    @Test
+    void elIntervaloDeActualizacionEsDe500Ms() {
+        assertEquals(500, crearPanel().getIntervaloMs());
+    }
+
+    @Test
+    void actualizarRefrescaElMarcadorLeyendoLaPartida() {
+        PanelLateral panel = crearPanel();
+        partida.ronda = 9;
+        partida.activo = new EstadoJugador("Bota", 1, 2, 3, 4, 20);
+        partida.rival = new EstadoJugador("Santi", 2, 6, 5, 6, 30);
+
+        panel.actualizar();
+
+        assertEquals("Turno de Bota", texto(panel, "etiquetaTurno"));
+        assertEquals("Ronda: 9", texto(panel, "etiquetaRonda"));
+        assertEquals("Puntos de movimiento: 2", texto(panel, "etiquetaPuntosMovimiento"));
+        assertEquals("Bota: 3", texto(panel, "etiquetaDominacionActivo"));
+        assertEquals("Santi: 5", texto(panel, "etiquetaDominacionRival"));
+    }
+
+    @Test
+    void actualizarNoTocaLaFichaNiLosObjetivos() {
+        PanelLateral panel = crearPanel();
+        partida.seleccionado = PartidaFalsa.crucero(2, ORIGEN);
+        partida.objetivos.add(PartidaFalsa.destructorEnemigo(8, new Posicion(4, 4), 3));
+
+        panel.actualizar();
+
+        // Eso lo refresca el aviso de la partida; el hilo no repuebla la lista desplegable cada 500 ms.
+        assertEquals("Ningún barco seleccionado", texto(panel, "etiquetaTipo"));
+        assertEquals(0, combo(panel).getItemCount());
+    }
+
+    @Test
+    void elHiloActualizaElMarcadorAunqueLaPartidaNoAvise() throws InterruptedException {
+        PanelLateral panel = crearPanel();
+        partida.ronda = 7;
+
+        panel.iniciar();
+        try {
+            esperarTexto(panel, "etiquetaRonda", "Ronda: 7");
+        } finally {
+            panel.detener();
+        }
+
+        assertEquals("Ronda: 7", texto(panel, "etiquetaRonda"));
+    }
+
+    @Test
+    void detenerFrenaElHiloDelPanel() {
+        PanelLateral panel = crearPanel();
+        panel.iniciar();
+        assertTrue(panel.estaCorriendo());
+
+        panel.detener();
+
+        assertFalse(panel.estaCorriendo());
+    }
+
+    /** Espera, con un límite de 2 segundos, a que el hilo del panel deje ese texto en la etiqueta. */
+    private static void esperarTexto(Container panel, String nombre, String esperado) throws InterruptedException {
+        long limite = System.currentTimeMillis() + 2000;
+        while (!esperado.equals(texto(panel, nombre)) && System.currentTimeMillis() < limite) {
+            Thread.sleep(20);
+        }
     }
 
     // Ayudas

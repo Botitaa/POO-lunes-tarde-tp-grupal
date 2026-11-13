@@ -1,6 +1,7 @@
 package batallanaval.vista;
 
 import java.awt.BorderLayout;
+import java.awt.event.HierarchyEvent;
 import java.io.Serial;
 import java.util.List;
 import java.util.Objects;
@@ -54,6 +55,19 @@ public final class PanelJuego extends JPanel implements ObservadorPartida {
         add(panelTablero, BorderLayout.CENTER);
         add(panelLateral, BorderLayout.EAST);
         add(panelHistorial, BorderLayout.SOUTH);
+
+        // VentanaPrincipal solo le inicia el hilo a la pantalla registrada (esta), no a los paneles de
+        // adentro. Por eso el hilo del PanelLateral corre solo mientras esta pantalla se está viendo:
+        // el CardLayout oculta las pantallas que no están al frente, y también se oculta al cerrar la ventana.
+        addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) {
+                if (isShowing()) {
+                    panelLateral.iniciar();
+                } else {
+                    panelLateral.detener();
+                }
+            }
+        });
     }
 
     /** Reenvía el aviso a los tres paneles (cada uno se redibuja en el EDT). */
