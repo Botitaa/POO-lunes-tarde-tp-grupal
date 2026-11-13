@@ -5,13 +5,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.awt.BorderLayout;
+import java.awt.GraphicsEnvironment;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,6 +39,26 @@ class PanelJuegoTest {
 
         assertSame(panel.getPanelTablero(), disposicion.getLayoutComponent(BorderLayout.CENTER));
         assertSame(panel.getPanelLateral(), disposicion.getLayoutComponent(BorderLayout.EAST));
+    }
+
+    @Test
+    void elHiloDelPanelLateralCorreSoloMientrasLaPantallaSeVe()
+            throws InterruptedException, InvocationTargetException {
+        assumeFalse(GraphicsEnvironment.isHeadless(), "Hace falta un entorno con pantalla para mostrar una ventana");
+        assertFalse(panel.getPanelLateral().estaCorriendo(), "antes de mostrarla no tiene que estar corriendo");
+        JFrame ventana = new JFrame();
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                ventana.add(panel);
+                ventana.setVisible(true);
+            });
+            assertTrue(panel.getPanelLateral().estaCorriendo(), "al mostrarse tiene que arrancar el hilo");
+
+            SwingUtilities.invokeAndWait(() -> ventana.setVisible(false));
+            assertFalse(panel.getPanelLateral().estaCorriendo(), "al ocultarse tiene que frenarse el hilo");
+        } finally {
+            SwingUtilities.invokeAndWait(ventana::dispose);
+        }
     }
 
     @Test
