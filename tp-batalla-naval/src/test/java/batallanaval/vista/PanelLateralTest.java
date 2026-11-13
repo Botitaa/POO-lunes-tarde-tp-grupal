@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import batallanaval.controlador.EstadoBarco;
 import batallanaval.controlador.EstadoJugador;
 import batallanaval.controlador.FasePartida;
+import batallanaval.excepciones.DisparoInvalidoException;
 import batallanaval.excepciones.HabilidadNoDisponibleException;
 import batallanaval.modelo.Posicion;
 
@@ -208,6 +209,57 @@ class PanelLateralTest {
 
         assertEquals(List.of("La habilidad está en espera."), errores);
         assertEquals(0, partida.vecesUsarHabilidad);
+    }
+
+    @Test
+    void siLaPartidaFallaConOtroErrorSeMuestraUnAvisoGenericoYElJuegoSigue() {
+        PanelLateral panel = crearPanel();
+        partida.rechazo = new IllegalStateException("jugadorActivo es null");
+
+        boton(panel, "Terminar turno").doClick();
+
+        // Al jugador no le llega el mensaje técnico, solo el aviso.
+        assertEquals(List.of(EjecutorAcciones.MENSAJE_ERROR_INESPERADO), errores);
+        assertEquals(0, partida.vecesTerminarTurno);
+
+        // El juego no se cortó: el mismo botón vuelve a funcionar.
+        partida.rechazo = null;
+        boton(panel, "Terminar turno").doClick();
+        assertEquals(1, partida.vecesTerminarTurno);
+        assertEquals(1, errores.size());
+    }
+
+    @Test
+    void todosLosBotonesAtrapanLosErroresInesperados() {
+        partida.seleccionado = PartidaFalsa.crucero(2, ORIGEN);
+        partida.ruta.add(new Posicion(2, 4));
+        partida.objetivos.add(PartidaFalsa.destructorEnemigo(8, new Posicion(4, 4), 3));
+        PanelLateral panel = crearPanel();
+        partida.rechazo = new NullPointerException();
+
+        List<String> botones = List.of("Confirmar movimiento", "Deshacer paso", "Usar habilidad",
+                "Disparar", "Terminar turno");
+        for (String texto : botones) {
+            boton(panel, texto).doClick();
+        }
+
+        assertEquals(botones.size(), errores.size());
+        for (String error : errores) {
+            assertEquals(EjecutorAcciones.MENSAJE_ERROR_INESPERADO, error);
+        }
+    }
+
+    @Test
+    void siLaPartidaRechazaElDisparoSeMuestraElMotivo() {
+        partida.seleccionado = PartidaFalsa.crucero(2, ORIGEN);
+        partida.objetivos.add(PartidaFalsa.destructorEnemigo(8, new Posicion(4, 4), 3));
+        PanelLateral panel = crearPanel();
+        partida.rechazo = new DisparoInvalidoException("Este barco está en cooldown.");
+
+        boton(panel, "Disparar").doClick();
+
+        assertEquals(List.of("Este barco está en cooldown."), errores);
+        assertTrue(partida.disparosA.isEmpty());
     }
 
     // Observador

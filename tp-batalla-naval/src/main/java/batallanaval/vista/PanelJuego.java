@@ -17,12 +17,12 @@ import batallanaval.controlador.ResultadoPartida;
 /**
  * Pantalla de juego ({@link Pantalla#JUEGO}): el {@link PanelTablero} en el centro y el
  * {@link PanelLateral} (HUD con ronda, puntos, dominación, ficha del barco y botones) a la
- * derecha. Abajo queda el lugar para el {@code PanelHistorial} cuando se integre.
+ * derecha y el {@link PanelHistorial} (plegable) abajo.
  * <p>
- * Arma sus dos paneles con la misma {@link Partida} y les reenvía los avisos de la partida:
+ * Arma sus tres paneles con la misma {@link Partida} y les reenvía los avisos de la partida:
  * así quien la crea (en la aplicación, {@code ControladorAplicacion}) registra un solo
  * observador, {@code partida.agregarObservador(panelJuego)}, y no tiene que conocer los
- * paneles de adentro. Ninguno de los dos decide reglas: solo leen la partida y le piden acciones.
+ * paneles de adentro. Ninguno decide reglas: solo leen la partida y le piden acciones.
  */
 public final class PanelJuego extends JPanel implements ObservadorPartida {
 
@@ -31,9 +31,10 @@ public final class PanelJuego extends JPanel implements ObservadorPartida {
 
     private final PanelTablero panelTablero;
     private final PanelLateral panelLateral;
+    private final PanelHistorial panelHistorial;
 
     /**
-     * Crea la pantalla de juego con su tablero y su panel lateral.
+     * Crea la pantalla de juego con su tablero, su panel lateral y su historial.
      *
      * @param partida partida que se muestra y a la que se le piden las acciones
      * @param alError qué hacer con el mensaje cuando la partida rechaza una acción de un botón
@@ -48,10 +49,12 @@ public final class PanelJuego extends JPanel implements ObservadorPartida {
         // las dos interfaces las implementa la misma Partida.
         panelTablero = new PanelTablero(partida, partida);
         panelLateral = new PanelLateral(partida, alError);
+        panelHistorial = new PanelHistorial(partida);
 
         setLayout(new BorderLayout());
         add(panelTablero, BorderLayout.CENTER);
         add(panelLateral, BorderLayout.EAST);
+        add(panelHistorial, BorderLayout.SOUTH);
 
         // VentanaPrincipal solo le inicia el hilo a la pantalla registrada (esta), no a los paneles de
         // adentro. Por eso el hilo del PanelLateral corre solo mientras esta pantalla se está viendo:
@@ -67,7 +70,7 @@ public final class PanelJuego extends JPanel implements ObservadorPartida {
         });
     }
 
-    /** Reenvía el aviso al tablero y al panel lateral (cada uno se redibuja en el EDT). */
+    /** Reenvía el aviso a los tres paneles (cada uno se redibuja en el EDT). */
     @Override
     public void onEstadoCambiado() {
         for (ObservadorPartida panel : paneles()) {
@@ -76,7 +79,7 @@ public final class PanelJuego extends JPanel implements ObservadorPartida {
     }
 
     /**
-     * Reenvía el cambio de fase al tablero y al panel lateral.
+     * Reenvía el cambio de fase a los tres paneles.
      *
      * @param fasePartida fase nueva
      */
@@ -88,7 +91,7 @@ public final class PanelJuego extends JPanel implements ObservadorPartida {
     }
 
     /**
-     * Reenvía el inicio de turno al tablero y al panel lateral.
+     * Reenvía el inicio de turno a los tres paneles.
      *
      * @param nombreJugador jugador que empieza el turno
      */
@@ -100,7 +103,7 @@ public final class PanelJuego extends JPanel implements ObservadorPartida {
     }
 
     /**
-     * Reenvía el fin de la partida al tablero y al panel lateral.
+     * Reenvía el fin de la partida a los tres paneles.
      *
      * @param resultadoPartida cómo terminó
      */
@@ -129,8 +132,17 @@ public final class PanelJuego extends JPanel implements ObservadorPartida {
         return panelLateral;
     }
 
-    /** Los dos paneles que reciben los avisos, como {@code ObservadorPartida} (polimorfismo). */
+    /**
+     * Historial de la partida (abajo, plegable).
+     *
+     * @return el panel del historial
+     */
+    public PanelHistorial getPanelHistorial() {
+        return panelHistorial;
+    }
+
+    /** Los tres paneles que reciben los avisos, como {@code ObservadorPartida} (polimorfismo). */
     private List<ObservadorPartida> paneles() {
-        return List.of(panelTablero, panelLateral);
+        return List.of(panelTablero, panelLateral, panelHistorial);
     }
 }

@@ -1,10 +1,10 @@
 package batallanaval.controlador;
 
 import batallanaval.excepciones.AccionInvalidaException;
+import batallanaval.excepciones.DespliegueInvalidoException;
 import batallanaval.historial.EventoPartida;
 import batallanaval.historial.HistorialPartida;
 import batallanaval.historial.TipoEvento;
-import java.time.LocalDateTime;
 import batallanaval.modelo.Acorazado;
 import batallanaval.modelo.Barco;
 import batallanaval.modelo.Casilla;
@@ -14,6 +14,7 @@ import batallanaval.modelo.Jugador;
 import batallanaval.modelo.Posicion;
 import batallanaval.modelo.Tablero;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -135,6 +136,24 @@ public class GestorPartida implements Partida {
 
     }
 
+    private void notificarCambio() {
+        for (ObservadorPartida observador : observadores) {
+            observador.onEstadoCambiado();
+        }
+    }
+
+    private void notificarFaseCambiada() {
+        for (ObservadorPartida observador : observadores) {
+            observador.onFaseCambiada(fase);
+        }
+    }
+
+    private void notificarTurnoIniciado() {
+        for (ObservadorPartida observador : observadores) {
+            observador.onTurnoIniciado(jugadorActivo.getNombre());
+        }
+    }
+
     @Override
     public void agregarObservador(ObservadorPartida observador) {
         observadores.add(Objects.requireNonNull(observador, "El observador no puede ser nulo."));
@@ -148,24 +167,93 @@ public class GestorPartida implements Partida {
     @Override
     public void ubicarBarco(int idBarco, Posicion destino) {
         exigirDespliegue();
-        throw new UnsupportedOperationException("Pendiente: PAR-05 (#50)");
+        Objects.requireNonNull(destino, "El destino no puede ser nulo.");
+
+        Barco barcoJugador = jugadorActivo.getBarcoPorId(idBarco);
+
+        if (barcoJugador == null) {
+            throw new DespliegueInvalidoException("Ese barco no es tuyo.");
+        }
+        if (!tablero.esZonaDespliegue(destino, jugadorActivo.getNumero())) {
+            throw new DespliegueInvalidoException("Solo podés ubicar barcos en tu zona de despliegue.");
+        }
+        if (!tablero.esTransitable(destino)) {
+            throw new DespliegueInvalidoException("No se puede ubicar un barco en esa casilla.");
+        }
+
+        for (Barco otro : jugadorActivo.getFlota()) {
+            if (otro != barcoJugador && destino.equals(otro.getPosicion())) {
+                throw new DespliegueInvalidoException("Ya hay un barco tuyo en esa casilla.");
+            }
+        }
+
+        barcoJugador.ubicarEn(destino);
+        registrarEvento(TipoEvento.DESPLIEGUE, "Ubicó " + barcoJugador.getSimbolo() + " en " + destino);
+        notificarCambio();
+
     }
 
     @Override
     public void retirarBarco(int idBarco) {
         exigirDespliegue();
-        throw new UnsupportedOperationException("Pendiente: PAR-05 (#50)");
+        Barco barco = jugadorActivo.getBarcoPorId(idBarco);
+
+        if (barco == null) {
+            throw new DespliegueInvalidoException("Ese barco no es tuyo.");
+        }
+
+        Posicion origen = barco.getPosicion();
+
+        if (origen == null){
+            throw new DespliegueInvalidoException("Ese barco ya se retiro");
+        }
+
+        barco.ubicarEn(null);
+        registrarEvento(TipoEvento.DESPLIEGUE, "retiro " + barco.getSimbolo() + " de " + origen);
+        notificarCambio();
     }
 
     @Override
     public List<EstadoBarco> getBarcosSinUbicar() {
-        throw new UnsupportedOperationException("Pendiente: PAR-05 (#50)");
+
+        List<EstadoBarco> listaBarcosSinUbicar = new ArrayList<>();
+
+        for(Barco barco: jugadorActivo.getFlota()){
+             if (barco.getPosicion() == null){
+                 listaBarcosSinUbicar.add(aEstadoBarco(barco,jugadorActivo.getNumero(),true));
+             }
+        }
+
+        return List.copyOf(listaBarcosSinUbicar);
     }
 
     @Override
     public void confirmarDespliegue() {
         exigirDespliegue();
-        throw new UnsupportedOperationException("Pendiente: PAR-05 (#50)");
+
+        if(!getBarcosSinUbicar().isEmpty()){
+            throw new DespliegueInvalidoException("tenes barcos sin ubicar");
+        }
+
+        if (fase == FasePartida.DESPLIEGUE_J1){
+            //jugador1 -> jugador 2
+            fase = FasePartida.DESPLIEGUE_J2;
+            registrarEvento(TipoEvento.DESPLIEGUE, jugador1.getNombre() + " termino su despliegue");
+            jugadorActivo = jugador2;
+
+
+
+        } else if (fase == FasePartida.DESPLIEGUE_J2) {
+            //jugador2 -> jugador1 arranca a jugar
+            fase = FasePartida.EN_JUEGO;
+            registrarEvento(TipoEvento.DESPLIEGUE, jugador2.getNombre() + " termino su despliegue");
+            jugadorActivo = jugador1;
+            jugadorActivo.reponerPuntos(PUNTOS_MOVIMIENTO_TURNO);
+        }
+
+        notificarFaseCambiada();
+        notificarTurnoIniciado();
+
     }
 
     @Override
@@ -184,6 +272,17 @@ public class GestorPartida implements Partida {
     public void deshacerPaso() {
         exigirEnJuego();
         throw new UnsupportedOperationException("Pendiente: PAR-07 (#52)");
+    }
+
+    @Override
+    public void cancelarSeleccion() {
+        if(barcoSeleccionado == null){
+            return;
+        }
+
+        barcoSeleccionado = null;
+        rutaPlanificada.clear();
+        notificarCambio();
     }
 
     @Override
@@ -523,7 +622,7 @@ public class GestorPartida implements Partida {
 //        for (Barco barco: rival().getBarcosVivos()){
 //            barcosEnemigosVisibles.add(aEstadoBarco(barco, jugadorActivo.getNumero(), false));
 //        }
-// cuando marcso termine sigo me falta una depen
+// Pendiente: PAR-10 (#55)
 
         return List.copyOf(barcosEnemigosVisibles);
     }

@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import java.awt.BorderLayout;
 import java.awt.GraphicsEnvironment;
 import java.lang.reflect.InvocationTargetException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,11 +22,13 @@ import org.junit.jupiter.api.Test;
 
 import batallanaval.controlador.FasePartida;
 import batallanaval.excepciones.AccionInvalidaException;
+import batallanaval.historial.EventoPartida;
+import batallanaval.historial.TipoEvento;
 import batallanaval.modelo.Posicion;
 
 /**
- * Prueba que {@link PanelJuego} arma la pantalla con el tablero al centro y el panel lateral
- * a la derecha, y que reenvía los avisos de la partida a los dos.
+ * Prueba que {@link PanelJuego} arma la pantalla con el tablero al centro, el panel lateral
+ * a la derecha y el historial abajo, y que reenvía los avisos de la partida a los tres.
  */
 class PanelJuegoTest {
 
@@ -34,11 +37,27 @@ class PanelJuegoTest {
     private final PanelJuego panel = new PanelJuego(partida, errores::add);
 
     @Test
-    void elTableroVaAlCentroYElPanelLateralALaDerecha() {
+    void elTableroVaAlCentroElPanelLateralALaDerechaYElHistorialAbajo() {
         BorderLayout disposicion = (BorderLayout) panel.getLayout();
 
         assertSame(panel.getPanelTablero(), disposicion.getLayoutComponent(BorderLayout.CENTER));
         assertSame(panel.getPanelLateral(), disposicion.getLayoutComponent(BorderLayout.EAST));
+        assertSame(panel.getPanelHistorial(), disposicion.getLayoutComponent(BorderLayout.SOUTH));
+    }
+
+    @Test
+    void registrandoSoloLaPantallaElHistorialSeEnteraDeLosEventosNuevos()
+            throws InterruptedException, InvocationTargetException {
+        partida.agregarObservador(panel);
+        partida.seleccionado = PartidaFalsa.crucero(2, new Posicion(1, 4));
+        partida.historial.add(new EventoPartida(1, 1, TipoEvento.MOVIMIENTO, "Crucero (1,4) -> (2,4)",
+                LocalDateTime.of(2026, 10, 5, 14, 0)));
+
+        // La partida avisa un cambio y PanelJuego se lo reenvía al historial.
+        partida.agregarPaso(new Posicion(2, 4));
+        PanelLateralTest.esperarAlEdt();
+
+        assertEquals(1, panel.getPanelHistorial().getCantidadEventos());
     }
 
     @Test
@@ -94,6 +113,15 @@ class PanelJuegoTest {
         PanelLateralTest.boton(panel, "Terminar turno").doClick();
 
         assertEquals(List.of("No es tu turno."), errores);
+    }
+
+    @Test
+    void losErroresInesperadosTambienLleganComoAvisoGenerico() {
+        partida.rechazo = new IllegalStateException("estado imposible");
+
+        PanelLateralTest.boton(panel, "Terminar turno").doClick();
+
+        assertEquals(List.of(EjecutorAcciones.MENSAJE_ERROR_INESPERADO), errores);
     }
 
     @Test

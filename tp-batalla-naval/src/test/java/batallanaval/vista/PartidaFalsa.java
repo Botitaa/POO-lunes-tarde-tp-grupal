@@ -27,6 +27,7 @@ class PartidaFalsa implements Partida {
     // Estado que lee la vista (lo cambia cada test)
     FasePartida fase = FasePartida.EN_JUEGO;
     boolean terminada = false;
+    boolean puedeGuardarse = false;
     int ronda = 1;
     EstadoJugador activo = new EstadoJugador("Bota", 1, 6, 0, 6, 34);
     EstadoJugador rival = new EstadoJugador("Santi", 2, 6, 0, 6, 34);
@@ -35,8 +36,12 @@ class PartidaFalsa implements Partida {
     int costoRuta = 0;
     List<EstadoBarco> objetivos = new ArrayList<>();
 
-    /** Si no es {@code null}, cualquier acción del turno la lanza (como si la partida la rechazara). */
-    AccionInvalidaException rechazo = null;
+    /**
+     * Si no es {@code null}, cualquier acción del turno la lanza. Una {@link AccionInvalidaException}
+     * simula que la partida rechazó la acción; cualquier otra {@code RuntimeException} simula un
+     * error de programación (por ejemplo, un {@code IllegalStateException}).
+     */
+    RuntimeException rechazo = null;
 
     // Contadores de las acciones pedidas
     int vecesConfirmarMovimiento;
@@ -46,6 +51,9 @@ class PartidaFalsa implements Partida {
     final List<Integer> disparosA = new ArrayList<>();
 
     final List<ObservadorPartida> observadores = new ArrayList<>();
+
+    /** Eventos que devuelve {@link #getHistorialVisible()} (ya filtrados, como los da la partida real). */
+    final List<EventoPartida> historial = new ArrayList<>();
 
     /** Barco propio de ejemplo: un crucero sano con la habilidad disponible. */
     static EstadoBarco crucero(int id, Posicion posicion) {
@@ -104,7 +112,7 @@ class PartidaFalsa implements Partida {
         aplicar(() -> vecesTerminarTurno++);
     }
 
-    /** Lo usa PanelTablero (Esc). Sin {@code @Override} a propósito: todavía no está en la interfaz. */
+    @Override
     public void cancelarSeleccion() {
         aplicar(() -> seleccionado = null);
     }
@@ -148,12 +156,12 @@ class PartidaFalsa implements Partida {
 
     @Override
     public List<EventoPartida> getHistorialVisible() {
-        return List.of();
+        return List.copyOf(historial);
     }
 
     @Override
     public boolean puedeGuardarse() {
-        return false;
+        return puedeGuardarse;
     }
 
     // PartidaTablero
