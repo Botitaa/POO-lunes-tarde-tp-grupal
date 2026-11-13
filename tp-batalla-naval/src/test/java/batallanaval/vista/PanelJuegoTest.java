@@ -73,6 +73,15 @@ class PanelJuegoTest {
     }
 
     @Test
+    void losErroresInesperadosTambienLleganComoAvisoGenerico() {
+        partida.rechazo = new IllegalStateException("estado imposible");
+
+        PanelLateralTest.boton(panel, "Terminar turno").doClick();
+
+        assertEquals(List.of(EjecutorAcciones.MENSAJE_ERROR_INESPERADO), errores);
+    }
+
+    @Test
     void noSeAceptanArgumentosNulos() {
         assertThrows(NullPointerException.class, () -> new PanelJuego(null, errores::add));
         assertThrows(NullPointerException.class, () -> new PanelJuego(partida, null));

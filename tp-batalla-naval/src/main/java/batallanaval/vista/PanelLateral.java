@@ -5,6 +5,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.event.ActionListener;
 import java.io.Serial;
 import java.util.List;
 import java.util.Objects;
@@ -27,7 +28,6 @@ import batallanaval.controlador.FasePartida;
 import batallanaval.controlador.ObservadorPartida;
 import batallanaval.controlador.Partida;
 import batallanaval.controlador.ResultadoPartida;
-import batallanaval.excepciones.AccionInvalidaException;
 import batallanaval.modelo.Posicion;
 
 /**
@@ -46,7 +46,8 @@ import batallanaval.modelo.Posicion;
  * se habilitan con lo que dice ese estado (por ejemplo, Disparar solo si la partida devuelve
  * algún objetivo válido) y, cuando se tocan, solo llaman al método de la partida. Si la
  * partida rechaza la acción, el mensaje de la excepción se le pasa a {@code alError}, que
- * quien arma el panel conecta con la barra de estado de la ventana.
+ * quien arma el panel conecta con la barra de estado de la ventana. Si salta cualquier otro
+ * error, se muestra "Ocurrió un error inesperado" y el juego sigue (ver {@link EjecutorAcciones}).
  * <p>
  * Implementa {@link ObservadorPartida}: cada vez que la partida avisa un cambio, el panel
  * vuelve a leer todo con {@link #actualizar()}, siempre en el EDT.
@@ -92,7 +93,7 @@ public final class PanelLateral extends JPanel implements ObservadorPartida {
      * observador: lo hace quien lo crea (o {@link PanelJuego}, que le reenvía los avisos).
      *
      * @param partida partida de la que se lee el estado y a la que se le piden las acciones
-     * @param alError qué hacer con el mensaje cuando la partida rechaza una acción
+     * @param alError qué hacer con el mensaje cuando la partida rechaza una acción o falla
      *                (en la aplicación, {@code ventana::mostrarError})
      * @throws NullPointerException si algún argumento es {@code null}
      */
@@ -231,14 +232,24 @@ public final class PanelLateral extends JPanel implements ObservadorPartida {
 
     /**
      * Cada botón solo le pide la acción a la partida. Si la partida avisa el cambio,
-     * el panel se refresca por {@link #onEstadoCambiado()}; si la rechaza, se muestra el motivo.
+     * el panel se refresca por {@link #onEstadoCambiado()}; si la rechaza o falla, el
+     * mensaje va a {@code alError} y el juego sigue.
      */
     private void conectarBotones() {
-        botonConfirmarMovimiento.addActionListener(e -> ejecutar(partida::confirmarMovimiento));
-        botonDeshacerPaso.addActionListener(e -> ejecutar(partida::deshacerPaso));
-        botonUsarHabilidad.addActionListener(e -> ejecutar(partida::usarHabilidad));
-        botonDisparar.addActionListener(e -> dispararAlObjetivoElegido());
-        botonTerminarTurno.addActionListener(e -> ejecutar(partida::terminarTurno));
+        botonConfirmarMovimiento.addActionListener(alTocar(partida::confirmarMovimiento));
+        botonDeshacerPaso.addActionListener(alTocar(partida::deshacerPaso));
+        botonUsarHabilidad.addActionListener(alTocar(partida::usarHabilidad));
+        botonDisparar.addActionListener(alTocar(this::dispararAlObjetivoElegido));
+        botonTerminarTurno.addActionListener(alTocar(partida::terminarTurno));
+    }
+
+    /**
+     * Listener que ejecuta la acción a través de {@link EjecutorAcciones}: las excepciones de
+     * reglas son unchecked, así que si llega una (la partida rechazó la acción) se muestra su
+     * mensaje, y si llega cualquier otra se muestra un aviso genérico. En ningún caso se corta el juego.
+     */
+    private ActionListener alTocar(Runnable accion) {
+        return EjecutorAcciones.alTocar(accion, alError);
     }
 
     private void dispararAlObjetivoElegido() {
@@ -247,19 +258,7 @@ public final class PanelLateral extends JPanel implements ObservadorPartida {
             alError.accept("Elegí un objetivo antes de disparar.");
             return;
         }
-        ejecutar(() -> partida.disparar(elegido.id()));
-    }
-
-    /**
-     * Ejecuta una acción de la partida. Las excepciones de reglas son unchecked: si llega una
-     * (la partida rechazó la acción), no se corta el juego, se muestra su mensaje.
-     */
-    private void ejecutar(Runnable accion) {
-        try {
-            accion.run();
-        } catch (AccionInvalidaException e) {
-            alError.accept(e.getMessage());
-        }
+        partida.disparar(elegido.id());
     }
 
     // Refresco de cada parte
