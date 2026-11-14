@@ -1,6 +1,7 @@
 package batallanaval.vista;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -10,9 +11,11 @@ import java.util.concurrent.Executor;
 import org.junit.jupiter.api.Test;
 
 import batallanaval.controlador.GestorPartida;
+import batallanaval.controlador.InstantaneaPartida;
 import batallanaval.excepciones.PersistenciaException;
 import batallanaval.modelo.FabricaFlota;
 import batallanaval.modelo.Jugador;
+import batallanaval.modelo.Posicion;
 import batallanaval.modelo.Tablero;
 
 /**
@@ -47,6 +50,54 @@ class AccionGuardarPartidaHiloTest {
         assertEquals(1, tareasPendientes.size(), "se lanzó una tarea");
         assertTrue(repositorio.nombresGuardados.isEmpty(), "la escritura la hace el hilo, no quien llama");
         assertTrue(avisos.isEmpty());
+    }
+
+    @Test
+    void laInstantaneaSeArmaAntesDeLanzarElHilo() {
+        // Partida que anota cuándo le piden la instantánea, en la misma lista que empezar y terminar
+        GestorPartida partidaQueAnota = new GestorPartida(jugador("Bota", 1), jugador("Santi", 2),
+                Tablero.crearMapaEstandar()) {
+            @Override
+            public boolean puedeGuardarse() {
+                return true;
+            }
+
+            @Override
+            public InstantaneaPartida crearInstantanea() {
+                eventos.add("instantanea");
+                return super.crearInstantanea();
+            }
+        };
+        lanzador = tarea -> {
+            eventos.add("lanzar");
+            tareasPendientes.add(tarea);
+        };
+        AccionGuardarPartida accion = new AccionGuardarPartida(repositorio, () -> partidaQueAnota,
+                errores::add, avisos::add, () -> "partida1", nombre -> true,
+                () -> eventos.add("empezar"), () -> eventos.add("terminar"), lanzador, Runnable::run);
+
+        accion.run();
+        assertEquals(List.of("instantanea", "empezar", "lanzar"), eventos,
+                "la copia se arma en el hilo de Swing, antes de que exista el hilo de fondo");
+
+        tareasPendientes.get(0).run();
+        assertEquals(List.of("instantanea", "empezar", "lanzar", "terminar"), eventos,
+                "el hilo de fondo no vuelve a pedir la instantánea: solo escribe la que recibió");
+    }
+
+    @Test
+    void siLaPartidaCambiaMientrasElHiloNoTerminoSeGuardaElEstadoDelMomentoDeGuardar() {
+        InstantaneaPartida alTocarGuardar = partida.crearInstantanea();
+        crearAccion().run();
+
+        // El hilo de fondo todavía no escribió y el jugador sigue tocando el tablero
+        partida.ubicarBarco(1, new Posicion(0, 0));
+        tareasPendientes.get(0).run();
+
+        assertEquals(alTocarGuardar, repositorio.ultimaInstantaneaGuardada,
+                "se guarda la foto del momento en que se tocó Guardar");
+        assertNotEquals(partida.crearInstantanea(), repositorio.ultimaInstantaneaGuardada,
+                "la partida sí cambió: el cambio no se coló en lo que escribe el hilo");
     }
 
     @Test
