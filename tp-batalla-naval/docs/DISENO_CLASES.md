@@ -88,7 +88,7 @@ Todas las habilidades tienen espera de 3 turnos, duran hasta el fin del turno, n
 
 La regla de qué ve cada jugador vive en **un solo método**: `GestorPartida.esVisibleParaJugador(Jugador observador, Posicion pos)`. Devuelve `true` si la casilla está en la zona de dominación, o si algún barco propio vivo tiene la casilla dentro de su visión (distancia de Chebyshev) y con línea de visión libre. Se eligió `GestorPartida` (Experto) porque es el único que conoce a los dos jugadores y al `Tablero`: `Barco` aporta su visión y su posición, y `Tablero` aporta la geometría (`hayLineaDeVision`, `esZonaDominacion`).
 
-`esBarcoVisibleParaJugador(Jugador, Barco)` delega en el anterior sobre la posición del barco y agrega el caso del barco revelado por disparo. Todo lo demás llama a estos métodos y no recalcula nada: `esVisible(Posicion)`, `getBarcosEnemigosVisibles`, `getObjetivosValidos`, la validación de `disparar` y el choque con un enemigo oculto al mover. La vista tampoco calcula niebla: `PanelTablero` solo pregunta `esVisible(Posicion)`.
+`esBarcoVisibleParaJugador(Jugador, Barco)` delega en el anterior sobre la posición del barco y agrega el caso del barco revelado por disparo. Un barco sin ubicar (despliegue) no lo ve nadie. Todo lo demás llama a estos métodos y no recalcula nada: `esVisible(Posicion)`, `getBarcosEnemigosVisibles`, `getObjetivosValidos`, la validación de `disparar` y el choque con un enemigo oculto al mover. La vista tampoco calcula niebla: `PanelTablero` solo pregunta `esVisible(Posicion)`.
 
 ## excepciones
 
@@ -303,7 +303,7 @@ El panel dibuja y traduce clics a llamadas a `Partida`; nunca decide si algo es 
 
 | Clase | Tipo | Qué hace | Miembros clave |
 | --- | --- | --- | --- |
-| `PanelTablero` | `extends JPanel implements ObservadorPartida` | Dibuja grilla, casillas, niebla, zona de dominación, barcos con su vida, selección, casillas alcanzables, ruta numerada y objetivos en rojo. Convierte clics en `Posicion` y llama a la partida según el modo. | `PanelTablero(Partida)`, `setModo(ModoInteraccion)`, `paintComponent(Graphics)`, `posicionEn(Point)`, `onEstadoCambiado()` → `repaint()`. Key bindings: Esc, Backspace, Enter. Tooltip con atributos del barco |
+| `PanelTablero` | `extends JPanel implements ObservadorPartida` | Dibuja grilla, casillas, niebla, zona de dominación, barcos con su vida, selección, casillas alcanzables, ruta numerada y objetivos en rojo. Convierte clics en `Posicion` y llama a la partida según el modo. | `PanelTablero(Partida)`, `setModo(ModoInteraccion)`, `setAlClickearCasilla(Consumer<Posicion>)` (qué hace un clic, lo decide quien arma el panel), `setModoDespliegue(boolean)` (sin niebla y sin atajos de combate), `paintComponent(Graphics)`, `posicionEn(Point)`, `onEstadoCambiado()` → `repaint()`. Key bindings: Esc, Backspace, Enter. Tooltip con atributos del barco |
 | `ModoInteraccion` | `enum` | Qué significa un clic ahora. | DESPLIEGUE, SELECCION, PLANIFICANDO_RUTA, ELIGIENDO_OBJETIVO, BLOQUEADO |
 | `PaletaColores` | Clase utilitaria | Todos los colores en un lugar, según el código visual de las reglas. | `AGUA` azul, `NIEBLA` azul oscuro, `ISLA` verde, `PIEDRA` gris, `RESTOS` X negra, `DOMINACION` borde dorado, `SELECCION` borde amarillo, `RANGO` rojo suave, `RUTA` celeste, `colorJugador(int)` |
 
@@ -317,7 +317,7 @@ Una sola ventana con `CardLayout`. Cada pantalla es un `JPanel` que recibe lo qu
 | `Pantalla` | `enum` | INICIO, NUEVA_PARTIDA, DESPLIEGUE, BLACKOUT, RESUMEN, JUEGO, FIN_PARTIDA, ESTADISTICAS, REGLAS, CARGAR. |
 | `PanelInicio` | `JPanel` | Botones Nueva partida, Cargar partida, Estadísticas, Reglas, Salir. |
 | `PanelNuevaPartida` | `JPanel` | Nombres de J1 y J2 (no vacíos, distintos, sin `;`), precargados de `ConfiguracionJuego`; sorteo de quién es J1. |
-| `PanelDespliegue` | `JPanel` | `PanelTablero` en modo DESPLIEGUE + lista de barcos sin ubicar + Confirmar despliegue (habilitado con los 6). |
+| `PanelDespliegue` | `JPanel implements ObservadorPartida` | `PanelTablero` en modo despliegue (sin niebla ni atajos de combate) a la izquierda; a la derecha la lista de barcos sin ubicar, el barco elegido y los botones Retirar barco y Confirmar despliegue (habilitado solo con los 6 ubicados). Elegir un barco en la lista (o hacer clic sobre uno ya ubicado) y hacer clic en una casilla lo ubica o lo mueve. No valida nada: los rechazos de la partida (`DespliegueInvalidoException`) van a `alError`. `PanelDespliegue(Partida, Consumer<String> alError)`; `actualizar()` se llama al mostrarla para que lea al jugador activo (reemplaza a la pantalla provisoria de `ControladorAplicacion`). |
 | `PanelBlackout` | `JPanel` | Fondo negro, "Turno de X", botón Listo y botón Guardar partida (solo acá se puede guardar). |
 | `PanelResumen` | `JPanel` | Mensajes de `getMensajesResumen()` y botón Continuar; se saltea si está vacío. |
 | `PanelJuego` | `JPanel implements ObservadorPartida` | `PanelTablero` en el centro + `PanelLateral` a la derecha + `PanelHistorial` abajo (plegable). `PanelJuego(Partida, Consumer<String> alError)`; reenvía los avisos de la partida a sus tres paneles (tablero, lateral e historial), así se registra un solo observador. Inicia el hilo de `PanelLateral` cuando la pantalla se muestra y lo detiene cuando se oculta. |
