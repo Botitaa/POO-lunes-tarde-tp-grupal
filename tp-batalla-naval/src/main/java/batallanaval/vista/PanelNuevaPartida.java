@@ -11,7 +11,6 @@ import java.util.Random;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 
@@ -28,8 +27,12 @@ import javax.swing.SwingConstants;
  * {@code ControladorAplicacion}) lee entonces los nombres con
  * {@link #getNombreJugador1()} y {@link #getNombreJugador2()}. Los errores se muestran
  * en la barra de estado de la {@link VentanaPrincipal}, no por consola.
+ * <p>
+ * Tiene su propio hilo ({@link PanelConHilo}): cada {@value #INTERVALO_MS} ms muestra una vista
+ * previa con los nombres escritos ("Bota vs Santi") o el motivo por el que todavía no se puede
+ * comenzar. El hilo lo inicia y lo detiene la {@link VentanaPrincipal}.
  */
-public final class PanelNuevaPartida extends JPanel {
+public final class PanelNuevaPartida extends PanelConHilo {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -37,11 +40,15 @@ public final class PanelNuevaPartida extends JPanel {
     private static final int COLUMNAS_CAMPO = 20;
     private static final Dimension TAMANIO_BOTON = new Dimension(200, 40);
 
+    /** Cada cuántos milisegundos se actualiza la vista previa. */
+    static final int INTERVALO_MS = 300;
+
     private final VentanaPrincipal ventana;
     private final transient Runnable alComenzar;
     private final JTextField campoJugador1 = new JTextField(COLUMNAS_CAMPO);
     private final JTextField campoJugador2 = new JTextField(COLUMNAS_CAMPO);
     private final Random azar = new Random();
+    private final JLabel vistaPrevia = new JLabel(" ", SwingConstants.CENTER);
 
     /**
      * @param ventana        ventana desde la que se navega y donde se muestran los errores
@@ -148,6 +155,13 @@ public final class PanelNuevaPartida extends JPanel {
 
         c.gridy = 5;
         add(crearBoton("Volver", () -> ventana.mostrar(Pantalla.INICIO)), c);
+
+        // Vista previa de los nombres: la va cambiando el hilo propio (actualizar)
+        c.gridy = 6;
+        c.insets = new Insets(18, 0, 6, 0);
+        vistaPrevia.setName("vistaPrevia");
+        vistaPrevia.setFont(vistaPrevia.getFont().deriveFont(Font.ITALIC, 15f));
+        add(vistaPrevia, c);
     }
 
     private JButton crearBoton(String texto, Runnable accion) {
@@ -167,6 +181,28 @@ public final class PanelNuevaPartida extends JPanel {
             return;
         }
         alComenzar.run();
+    }
+
+    // Hilo propio (PanelConHilo)
+
+    /**
+     * Paso del hilo propio: muestra "Jugador 1 vs Jugador 2" si los nombres son válidos o, si no,
+     * el motivo. Lo ejecuta el EDT cada {@value #INTERVALO_MS} ms.
+     */
+    @Override
+    protected void actualizar() {
+        String error = validarNombres(getNombreJugador1(), getNombreJugador2());
+        if (error == null) {
+            vistaPrevia.setText(getNombreJugador1() + " vs " + getNombreJugador2());
+        } else {
+            vistaPrevia.setText(error);
+        }
+    }
+
+    /** @return {@value #INTERVALO_MS} */
+    @Override
+    protected int getIntervaloMs() {
+        return INTERVALO_MS;
     }
 
     /** Con 50% de probabilidad intercambia los nombres y avisa quién quedó como Jugador 1. */

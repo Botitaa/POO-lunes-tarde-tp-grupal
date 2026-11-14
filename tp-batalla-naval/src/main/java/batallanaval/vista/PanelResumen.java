@@ -3,6 +3,7 @@ package batallanaval.vista;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.event.HierarchyEvent;
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,13 +40,26 @@ import batallanaval.controlador.PartidaConsulta;
  * {@code getMensajesResumen()} (principio de segregación de interfaces: usa únicamente lo que
  * necesita). Lo que pasa al apretar Continuar lo decide quien armó el panel, a través de un
  * {@link Runnable}. Todos los métodos se llaman desde el EDT.
+ * <p>
+ * Tiene su propio hilo ({@link PanelConHilo}): cada {@value #INTERVALO_MS} ms hace parpadear un
+ * aviso junto al botón Continuar. Como la aplicación registra esta pantalla dentro de un
+ * contenedor, la {@link VentanaPrincipal} no la ve directamente: por eso el propio panel inicia
+ * su hilo cuando se muestra y lo detiene cuando se oculta (igual que {@code PanelJuego} con el
+ * panel lateral).
  */
-public final class PanelResumen extends JPanel {
+public final class PanelResumen extends PanelConHilo {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
+    /** Cada cuántos milisegundos se prende o se apaga el aviso. */
+    static final int INTERVALO_MS = 600;
+
+    /** Aviso que parpadea junto al botón Continuar. */
+    static final String TEXTO_AVISO = "Tocá Continuar para jugar tu turno";
+
     private final transient PartidaConsulta partida;
+    private final JLabel aviso = new JLabel(TEXTO_AVISO, SwingConstants.CENTER);
     private final DefaultListModel<String> modelo = new DefaultListModel<>();
 
     /**
@@ -72,7 +86,23 @@ public final class PanelResumen extends JPanel {
         botonContinuar.addActionListener(e -> alContinuar.run());
         JPanel pie = new JPanel(new FlowLayout(FlowLayout.CENTER));
         pie.add(botonContinuar);
-        add(pie, BorderLayout.SOUTH);
+        aviso.setName("aviso");
+        JPanel abajo = new JPanel(new BorderLayout());
+        abajo.add(aviso, BorderLayout.NORTH);
+        abajo.add(pie, BorderLayout.CENTER);
+        add(abajo, BorderLayout.SOUTH);
+
+        // La pantalla está dentro de un contenedor: el hilo se inicia cuando se muestra y se
+        // detiene cuando se oculta (CardLayout oculta las pantallas que no están al frente).
+        addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) {
+                if (isShowing()) {
+                    iniciar();
+                } else {
+                    detener();
+                }
+            }
+        });
     }
 
     /**
@@ -91,6 +121,27 @@ public final class PanelResumen extends JPanel {
             modelo.addElement(mensaje);
         }
         return true;
+    }
+
+    // Hilo propio (PanelConHilo)
+
+    /**
+     * Paso del hilo propio: prende o apaga el aviso (cambiando el texto, para que el botón no se
+     * mueva). Lo ejecuta el EDT cada {@value #INTERVALO_MS} ms.
+     */
+    @Override
+    protected void actualizar() {
+        if (aviso.getText().equals(TEXTO_AVISO)) {
+            aviso.setText(" ");
+        } else {
+            aviso.setText(TEXTO_AVISO);
+        }
+    }
+
+    /** @return {@value #INTERVALO_MS} */
+    @Override
+    protected int getIntervaloMs() {
+        return INTERVALO_MS;
     }
 
     /**

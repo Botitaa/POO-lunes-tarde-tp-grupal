@@ -11,7 +11,6 @@ import java.util.Objects;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
 /**
@@ -25,19 +24,29 @@ import javax.swing.SwingConstants;
  * constructor. Quien lo creó (en la aplicación, {@code ControladorAplicacion}) es el que
  * cambia de pantalla o guarda la partida (en un hilo propio, para no congelar la ventana).
  * Antes de mostrar esta pantalla hay que llamar a {@link #mostrarTurnoDe(String)}.
+ * <p>
+ * Tiene su propio hilo ({@link PanelConHilo}): cada {@value #INTERVALO_MS} ms hace parpadear un
+ * aviso debajo del cartel. El hilo lo inicia y lo detiene la {@link VentanaPrincipal}.
  */
-public final class PanelBlackout extends JPanel {
+public final class PanelBlackout extends PanelConHilo {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     private static final Dimension TAMANIO_BOTON = new Dimension(220, 44);
 
+    /** Cada cuántos milisegundos se prende o se apaga el aviso. */
+    static final int INTERVALO_MS = 600;
+
+    /** Aviso que parpadea debajo del cartel. */
+    static final String TEXTO_AVISO = "Tocá Listo cuando tengas la computadora";
+
     private final transient Runnable alListo;
     private final transient Runnable alGuardar;
     private final JLabel cartelTurno = new JLabel(" ", SwingConstants.CENTER);
     private final JButton botonListo = new JButton("Listo");
     private final JButton botonGuardar = new JButton("Guardar partida");
+    private final JLabel aviso = new JLabel(TEXTO_AVISO, SwingConstants.CENTER);
 
     /**
      * @param alListo   se ejecuta cuando el jugador que recibe la computadora toca "Listo"
@@ -81,14 +90,41 @@ public final class PanelBlackout extends JPanel {
 
         cartelTurno.setFont(cartelTurno.getFont().deriveFont(Font.BOLD, 48f));
         cartelTurno.setForeground(Color.WHITE);
-        c.insets = new Insets(0, 0, 40, 0);
+        c.insets = new Insets(0, 0, 10, 0);
         add(cartelTurno, c);
+
+        aviso.setName("aviso");
+        aviso.setFont(aviso.getFont().deriveFont(Font.PLAIN, 16f));
+        aviso.setForeground(Color.LIGHT_GRAY);
+        c.insets = new Insets(0, 0, 30, 0);
+        add(aviso, c);
 
         c.insets = new Insets(6, 0, 6, 0);
         configurarBoton(botonListo, alListo);
         add(botonListo, c);
         configurarBoton(botonGuardar, alGuardar);
         add(botonGuardar, c);
+    }
+
+    // Hilo propio (PanelConHilo)
+
+    /**
+     * Paso del hilo propio: prende o apaga el aviso. Se cambia el texto (y no se oculta la
+     * etiqueta) para que los botones no se muevan. Lo ejecuta el EDT cada {@value #INTERVALO_MS} ms.
+     */
+    @Override
+    protected void actualizar() {
+        if (aviso.getText().equals(TEXTO_AVISO)) {
+            aviso.setText(" ");
+        } else {
+            aviso.setText(TEXTO_AVISO);
+        }
+    }
+
+    /** @return {@value #INTERVALO_MS} */
+    @Override
+    protected int getIntervaloMs() {
+        return INTERVALO_MS;
     }
 
     private void configurarBoton(JButton boton, Runnable accion) {
