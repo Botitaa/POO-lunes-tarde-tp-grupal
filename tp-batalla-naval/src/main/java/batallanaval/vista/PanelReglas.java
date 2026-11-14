@@ -5,6 +5,8 @@ import java.awt.Font;
 import java.awt.FlowLayout;
 import java.awt.Insets;
 import java.io.Serial;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 import javax.swing.BorderFactory;
@@ -18,8 +20,11 @@ import javax.swing.SwingConstants;
 /**
  * Pantalla con las reglas del juego: un texto de solo lectura dentro de un
  * {@link JScrollPane}, con un botón para volver al menú.
+ * <p>
+ * Tiene su propio hilo ({@link PanelConHilo}): cada {@value #INTERVALO_MS} ms actualiza la hora
+ * que se ve abajo. El hilo lo inicia y lo detiene la {@link VentanaPrincipal}.
  */
-public final class PanelReglas extends JPanel {
+public final class PanelReglas extends PanelConHilo {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -43,7 +48,7 @@ public final class PanelReglas extends JPanel {
             - Si las dos casillas vecinas de una diagonal bloquean, la diagonal también queda \
             bloqueada (para el paso o la visión, según el tipo). Si bloquea solo una, la diagonal \
             está libre.
-            
+
             BARCOS
             Cada jugador tiene 1 Acorazado, 2 Cruceros y 3 Destructores. Cada barco ocupa 1 casilla.
             - Destructor: vida 3, daño 3, rango 2, visión 2. Se mueve hasta 4 casillas por turno y \
@@ -110,7 +115,13 @@ public final class PanelReglas extends JPanel {
             vivos; si sigue el empate, quien tenga más vida total. Si todo es igual, es empate.
             """;
 
+    private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    /** Cada cuántos milisegundos se actualiza la hora. */
+    static final int INTERVALO_MS = 1000;
+
     private final VentanaPrincipal ventana;
+    private final JLabel etiquetaReloj = new JLabel(" ", SwingConstants.CENTER);
 
     /**
      * @param ventana ventana desde la que se vuelve al menú
@@ -142,6 +153,24 @@ public final class PanelReglas extends JPanel {
                 EjecutorAcciones.alTocar(() -> ventana.mostrar(Pantalla.INICIO), ventana::mostrarError));
         JPanel pie = new JPanel(new FlowLayout(FlowLayout.CENTER));
         pie.add(botonVolver);
-        add(pie, BorderLayout.SOUTH);
+        etiquetaReloj.setName("etiquetaReloj");
+        JPanel abajo = new JPanel(new BorderLayout());
+        abajo.add(pie, BorderLayout.CENTER);
+        abajo.add(etiquetaReloj, BorderLayout.SOUTH);
+        add(abajo, BorderLayout.SOUTH);
+    }
+
+    // Hilo propio (PanelConHilo)
+
+    /** Paso del hilo propio: actualiza la hora. Lo ejecuta el EDT cada {@value #INTERVALO_MS} ms. */
+    @Override
+    protected void actualizar() {
+        etiquetaReloj.setText(LocalTime.now().format(FORMATO_HORA));
+    }
+
+    /** @return {@value #INTERVALO_MS} */
+    @Override
+    protected int getIntervaloMs() {
+        return INTERVALO_MS;
     }
 }
