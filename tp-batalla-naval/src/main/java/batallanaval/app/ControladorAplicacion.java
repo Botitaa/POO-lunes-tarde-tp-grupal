@@ -99,8 +99,11 @@ public final class ControladorAplicacion implements ObservadorPartida {
         this.repositorioPartidas = Objects.requireNonNull(repositorioPartidas, "repositorioPartidas");
         this.repositorioEstadisticas = Objects.requireNonNull(repositorioEstadisticas, "repositorioEstadisticas");
 
+        // Guardar corre en un hilo propio (TareaGuardar): mientras tanto se bloquean los botones del
+        // blackout y se liberan al terminar, salga bien o mal.
         accionGuardar = new AccionGuardarPartida(repositorioPartidas, () -> partida,
-                ventana::mostrarError, ventana::mostrarMensaje);
+                ventana::mostrarError, ventana::mostrarMensaje,
+                this::bloquearBotonesDelBlackout, this::liberarBotonesDelBlackout);
         barraMenu = new BarraMenuJuego(accionGuardar, () -> ventana.mostrar(Pantalla.CARGAR),
                 this::abandonar, () -> ventana.mostrar(Pantalla.REGLAS));
         panelBlackout = new PanelBlackout(this::alTocarListo, accionGuardar);
@@ -199,6 +202,18 @@ public final class ControladorAplicacion implements ObservadorPartida {
         }
         partida = null;
         barraMenu.mostrarPartida(null);
+    }
+
+    // ---------- guardado en un hilo propio ----------
+
+    /** Se ejecuta en el EDT justo antes de lanzar el hilo que guarda: no se puede tocar nada mientras tanto. */
+    private void bloquearBotonesDelBlackout() {
+        panelBlackout.setBotonesHabilitados(false);
+    }
+
+    /** Se ejecuta en el EDT cuando el hilo que guarda terminó (bien o mal). */
+    private void liberarBotonesDelBlackout() {
+        panelBlackout.setBotonesHabilitados(true);
     }
 
     // ---------- cambio de pantallas durante la partida ----------
