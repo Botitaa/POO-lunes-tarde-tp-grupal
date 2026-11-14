@@ -154,6 +154,91 @@ public class GestorPartida implements Partida {
         }
     }
 
+    private void notificarPartidaTerminada(){
+        for (ObservadorPartida observador : observadores){
+            observador.onPartidaTerminada(resultado);
+        }
+    }
+
+    private void cambiarJugadorActivo(){
+
+        jugadorActivo = rival();
+        if (jugadorActivo == jugador1){
+            ronda ++;
+        }
+
+    }
+
+    private void iniciarTurno(){
+
+        jugadorActivo.reponerPuntos(PUNTOS_MOVIMIENTO_TURNO);
+        accionRealizadaEnTurno = false;
+
+        for (Barco barcoVivo: jugadorActivo.getBarcosVivos()){
+            barcoVivo.reiniciarTurno();
+            barcoVivo.marcarRevelado(false);
+        }
+
+    }
+
+    private void actualizarDominacion(){
+
+
+        if(tieneBarcosEnDominacion(jugadorActivo) && !tieneBarcosEnDominacion(rival())){
+            jugadorActivo.sumarPuntoDominacion();
+            registrarEvento(TipoEvento.DOMINACION, jugadorActivo.getNombre() + " sumó un punto de dominación");
+        }
+
+    }
+
+    private boolean tieneBarcosEnDominacion(Jugador jugador){
+
+        for (Barco barco: jugador.getBarcosVivos()){
+            if (esZonaDominacion(barco.getPosicion())){
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void resolverLimiteDeTurnos(){
+
+        Jugador ganador = null;
+
+        //putnos de dominacion
+
+        if (jugadorActivo.getPuntosDominacion() > rival().getPuntosDominacion()){
+            ganador = jugadorActivo;
+        } else if (jugadorActivo.getPuntosDominacion() < rival().getPuntosDominacion()) {
+            ganador = rival();
+        } else if (jugadorActivo.getBarcosVivos().size() > rival().getBarcosVivos().size()){
+            ganador =jugadorActivo;
+        } else if (jugadorActivo.getBarcosVivos().size() < rival().getBarcosVivos().size()) {
+            ganador = rival();
+        }else if (jugadorActivo.getVidaTotal() > rival().getVidaTotal()){
+            ganador =jugadorActivo;
+        } else if (jugadorActivo.getVidaTotal() < rival().getVidaTotal()) {
+            ganador = rival();
+        }
+
+        terminarPartida(ganador, ganador == null ? MotivoFin.EMPATE : MotivoFin.LIMITE_TURNOS);
+    }
+
+    private void terminarPartida(Jugador ganador, MotivoFin motivoFin) {
+
+        if (estaTerminada()) {
+            return;
+        }
+
+        fase = FasePartida.TERMINADA;
+        resultado = new ResultadoPartida(LocalDateTime.now(), jugador1.getNombre(), jugador2.getNombre(), ganador == null ? null : ganador.getNombre(), ronda, motivoFin);
+        registrarEvento(TipoEvento.FIN_PARTIDA, "Partida terminada");
+        notificarFaseCambiada();
+        notificarPartidaTerminada();
+    }
+
+
     @Override
     public void agregarObservador(ObservadorPartida observador) {
         observadores.add(Objects.requireNonNull(observador, "El observador no puede ser nulo."));
@@ -306,7 +391,25 @@ public class GestorPartida implements Partida {
     @Override
     public void terminarTurno() {
         exigirEnJuego();
-        throw new UnsupportedOperationException("Pendiente: PAR-06 (#51)");
+
+        cancelarSeleccion();
+        actualizarDominacion();
+        registrarEvento(TipoEvento.FIN_TURNO, jugadorActivo.getNombre() + "termino su turno");
+        jugadorActivo.getResumen().limpiar();
+
+        if (jugadorActivo.getPuntosDominacion() >= PUNTOS_DOMINACION_VICTORIA) {
+            terminarPartida(jugadorActivo, MotivoFin.DOMINACION);
+            return;
+        }
+
+        if (jugadorActivo == jugador2 && ronda == TURNOS_MAX) {
+            resolverLimiteDeTurnos();   // Pendiente
+            return;
+        }
+
+        cambiarJugadorActivo();
+        iniciarTurno();
+        notificarTurnoIniciado();
     }
 
     @Override
