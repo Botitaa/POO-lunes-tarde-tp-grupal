@@ -9,7 +9,12 @@ Juego por turnos para **dos jugadores en la misma computadora**. Cada uno comand
 1. En el menú de inicio tocá **Nueva partida**.
 2. Escribí el nombre de cada jugador. Tienen que ser **distintos**, no pueden estar vacíos ni tener el carácter `;`. Con **Sortear quién es J1** se elige al azar quién juega primero.
 3. Tocá **Comenzar** (o apretá Enter en un campo de nombre).
-4. **Despliegue:** cada jugador ubica sus 6 barcos (1 Acorazado, 2 Cruceros, 3 Destructores, uno por casilla) en su zona y confirma. El Jugador 1 despliega en las filas 0 a 2 y el Jugador 2 en las filas 7 a 9. No se puede guardar durante el despliegue.
+4. **Despliegue:** antes de cada despliegue aparece el blackout ("Turno de X") y el jugador toca **Listo**. Cada jugador ubica sus 6 barcos (1 Acorazado, 2 Cruceros, 3 Destructores, uno por casilla):
+   - Elegí un barco de la lista **Barcos sin ubicar** y hacé clic en una casilla de tu zona. El Jugador 1 despliega en las filas 0 a 2 (las 3 de arriba) y el Jugador 2 en las filas 7 a 9 (las 3 de abajo). Después de ubicar uno, queda elegido el siguiente.
+   - Para cambiar de lugar un barco ya ubicado, hacé clic sobre él y después en otra casilla. **Retirar barco** lo devuelve a la lista.
+   - Cuando están los 6 en el mapa se habilita **Confirmar despliegue**. Al confirmar, la computadora pasa al otro jugador.
+
+   No se puede guardar durante el despliegue.
 
 Otras opciones del menú de inicio: **Cargar partida**, **Estadísticas** (ranking de jugadores), **Reglas** y **Salir**.
 
@@ -130,6 +135,7 @@ Los avisos y errores aparecen en la **barra de estado**, abajo de la ventana, y 
 | Mensaje | Qué hacer |
 | --- | --- |
 | "Los dos jugadores tienen que tener nombres distintos" | Cambiá uno de los nombres |
+| "Solo podés ubicar barcos en tu zona de despliegue" | Hacé clic dentro de las 3 filas que te corresponden |
 | "La partida solo se puede guardar al inicio de un turno o en la pantalla de blackout" | Terminá el turno y guardá en el blackout, o cancelá la ruta y guardá |
 | "Nombre de partida invalido" | Usá solo letras, números, `-` y `_` |
 | Un mensaje sobre un archivo (no existe, formato inválido, error al escribir) | Elegí otra partida o revisá que la carpeta `datos/` se pueda escribir |

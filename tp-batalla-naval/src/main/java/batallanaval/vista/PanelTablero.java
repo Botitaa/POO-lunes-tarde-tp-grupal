@@ -33,6 +33,7 @@ import java.awt.event.MouseMotionListener;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Panel que extiende de JPanel para representar la grilla de 10x10 del tablero de Batalla Naval.
@@ -45,6 +46,8 @@ import java.util.Set;
  * Atajos de teclado (key bindings): Esc cancela la selección, Backspace deshace el último paso
  * de la ruta y Enter confirma el movimiento.
  * Todo lo que dibuja se lo pregunta a PartidaTablero: el panel no conoce el Tablero.
+ * Qué significa un clic lo decide quien arma el panel con {@link #setAlClickearCasilla(Consumer)}.
+ * En el despliegue se activa {@link #setModoDespliegue(boolean)}: sin niebla y sin atajos de combate.
  * Implementa ObservadorPartida: quien crea el panel lo registra en la partida con
  * agregarObservador, y desde ahí el panel se redibuja ante cada cambio.
  */
@@ -61,6 +64,12 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
 
     // Guarda la posición de la celda sobre la cual está el mouse actualmente
     private Posicion casillaHover = null;
+
+    // Qué hacer cuando se hace clic en una casilla del tablero (null: el clic no hace nada)
+    private transient Consumer<Posicion> alClickearCasilla = null;
+
+    // En el despliegue no hay niebla (el jugador tiene que ver su zona) ni atajos de combate
+    private boolean modoDespliegue = false;
 
     /**
      * Crea el panel del tablero.
@@ -83,6 +92,30 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
 
         // Atajos de teclado: Esc, Backspace y Enter
         registrarAtajosDeTeclado();
+    }
+
+    /**
+     * Define qué pasa cuando el jugador hace clic en una casilla del tablero. El panel solo traduce
+     * los píxeles a una {@link Posicion}; quien lo armó decide qué hacer con ella (en el despliegue,
+     * ubicar un barco). Los clics fuera de la grilla no se informan.
+     *
+     * @param alClickearCasilla acción que recibe la casilla clickeada, o {@code null} para que los
+     *                          clics no hagan nada
+     */
+    public void setAlClickearCasilla(Consumer<Posicion> alClickearCasilla) {
+        this.alClickearCasilla = alClickearCasilla;
+    }
+
+    /**
+     * Activa o desactiva el modo despliegue. Con el modo activo no se dibuja la niebla (el jugador
+     * tiene que ver toda su zona para ubicar los barcos) y los atajos Esc, Backspace y Enter no
+     * hacen nada, porque son de la fase de juego. Por defecto está desactivado.
+     *
+     * @param modoDespliegue {@code true} para el despliegue, {@code false} para jugar
+     */
+    public void setModoDespliegue(boolean modoDespliegue) {
+        this.modoDespliegue = modoDespliegue;
+        repaint();
     }
 
     /**
@@ -156,7 +189,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
                 // Niebla de guerra: si el jugador no ve esta casilla, la oscurecemos.
                 // El mapa se sigue viendo debajo (el terreno y los restos se ven siempre).
                 // Qué es visible lo decide la partida, el panel solo pregunta.
-                if (!partidaTablero.esVisible(pos)) {
+                if (!modoDespliegue && !partidaTablero.esVisible(pos)) {
                     g2d.setColor(new Color(30, 40, 60, 150)); // Azul oscuro grisado, semitransparente
                     g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
                 }
@@ -362,6 +395,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         acciones.put("cancelarSeleccion", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (modoDespliegue) {
+                    return;
+                }
                 try {
                     partidaCombate.cancelarSeleccion();
                 } catch (AccionInvalidaException ex) {
@@ -372,6 +408,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         acciones.put("deshacerPaso", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (modoDespliegue) {
+                    return;
+                }
                 try {
                     partidaCombate.deshacerPaso();
                 } catch (AccionInvalidaException ex) {
@@ -382,6 +421,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         acciones.put("confirmarMovimiento", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (modoDespliegue) {
+                    return;
+                }
                 try {
                     partidaCombate.confirmarMovimiento();
                 } catch (AccionInvalidaException ex) {
@@ -458,7 +500,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     }
 
     /** Traduce el símbolo del barco al nombre de su tipo. */
-    private String nombreTipo(char simbolo) {
+    static String nombreTipo(char simbolo) {
         switch (simbolo) {
             case 'A':
                 return "Acorazado";
@@ -566,8 +608,8 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     @Override
     public void mouseClicked(MouseEvent e) {
         Posicion posClicked = obtenerPosicionDesdeCoordenadas(e.getX(), e.getY());
-        if (posClicked != null) {
-            // Aquí se conectará con la partida cuando el controlador esté integrado
+        if (posClicked != null && alClickearCasilla != null) {
+            alClickearCasilla.accept(posClicked);
         }
     }
 

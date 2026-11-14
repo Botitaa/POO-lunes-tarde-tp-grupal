@@ -19,6 +19,7 @@ import batallanaval.vista.AccionGuardarPartida;
 import batallanaval.vista.BarraMenuJuego;
 import batallanaval.vista.PanelBlackout;
 import batallanaval.vista.PanelCargarPartida;
+import batallanaval.vista.PanelDespliegue;
 import batallanaval.vista.PanelEstadisticas;
 import batallanaval.vista.PanelInicio;
 import batallanaval.vista.PanelJuego;
@@ -78,7 +79,7 @@ public final class ControladorAplicacion implements ObservadorPartida {
     private GestorPartida partida;
     private PanelJuego panelJuego;
     private PanelResumen panelResumen;
-    private PanelDespliegueTemporal panelDespliegue;
+    private PanelDespliegue panelDespliegue;
 
     /** Arma la aplicación con la ventana y los repositorios reales (archivos en {@code datos/}). */
     public ControladorAplicacion() {
@@ -178,13 +179,14 @@ public final class ControladorAplicacion implements ObservadorPartida {
 
         panelJuego = new PanelJuego(nueva, ventana::mostrarError);
         panelResumen = new PanelResumen(nueva, () -> ventana.mostrar(Pantalla.JUEGO));
-        panelDespliegue = new PanelDespliegueTemporal(nueva, ventana::mostrarError);
+        panelDespliegue = new PanelDespliegue(nueva, ventana::mostrarError);
         reemplazar(contenedorJuego, panelJuego);
         reemplazar(contenedorResumen, panelResumen);
         reemplazar(contenedorDespliegue, panelDespliegue);
 
         nueva.agregarObservador(this);
         nueva.agregarObservador(panelJuego);
+        nueva.agregarObservador(panelDespliegue);
         nueva.agregarObservador(barraMenu);
         // TEMPORAL (#80): nueva.agregarObservador(new AutoGuardado(...)) cuando Faccio lo suba.
         barraMenu.mostrarPartida(nueva);
@@ -195,6 +197,7 @@ public final class ControladorAplicacion implements ObservadorPartida {
         if (partida != null) {
             partida.quitarObservador(this);
             partida.quitarObservador(panelJuego);
+            partida.quitarObservador(panelDespliegue);
             partida.quitarObservador(barraMenu);
         }
         partida = null;
