@@ -3,6 +3,7 @@ package batallanaval.controlador;
 import batallanaval.excepciones.AccionInvalidaException;
 import batallanaval.excepciones.DespliegueInvalidoException;
 import batallanaval.excepciones.MovimientoInvalidoException;
+import batallanaval.excepciones.DisparoInvalidoException;
 import batallanaval.historial.EventoPartida;
 import batallanaval.historial.HistorialPartida;
 import batallanaval.historial.TipoEvento;
@@ -451,7 +452,53 @@ public class GestorPartida implements Partida {
     @Override
     public void disparar(int idObjetivo) {
         exigirEnJuego();
-        throw new UnsupportedOperationException("Pendiente: PAR-09 (#54)");
+
+        if (barcoSeleccionado == null) {
+            throw new DisparoInvalidoException("Primero seleccioná el barco que dispara.");
+        }
+        if (!barcoSeleccionado.puedeDisparar()) {
+            throw new DisparoInvalidoException("Ese barco no puede disparar ahora (ya disparó o está recargando).");
+        }
+        Barco objetivo = rival().getBarcoPorId(idObjetivo);
+        if (objetivo == null || objetivo.estaHundido()) {
+            throw new DisparoInvalidoException("Ese objetivo no existe o ya está hundido.");
+        }
+        if (!puedeAlcanzar(barcoSeleccionado, objetivo)) {
+            throw new DisparoInvalidoException("Ese barco no se ve, está fuera de rango o hay una isla en el medio.");
+        }
+
+        Barco tirador = barcoSeleccionado;
+        Posicion origen = tirador.getPosicion();
+        Posicion posicionObjetivo = objetivo.getPosicion();
+
+        int danio = tirador.getDanio();
+
+        tirador.registrarDisparo(); // también lo deja revelado para el próximo turno del rival
+
+        objetivo.recibirDanio(danio);
+
+        rival().getResumen().agregarDisparoRecibido(objetivo, danio, origen);
+
+        registrarEvento(TipoEvento.DISPARO, tirador.getSimbolo() + " " + origen + " -> "
+                + objetivo.getSimbolo() + " " + posicionObjetivo + ", -" + danio);
+
+        accionRealizadaEnTurno = true;
+
+        rutaPlanificada.clear(); // un barco que disparó ya no se mueve
+
+        if (objetivo.estaHundido()) {
+            tablero.convertirEnRestos(posicionObjetivo);
+            rival().getResumen().agregarBarcoHundido(objetivo, posicionObjetivo);
+
+            registrarEvento(TipoEvento.HUNDIMIENTO, objetivo.getSimbolo() + " de " + rival().getNombre()
+                    + " hundido en " + posicionObjetivo);
+
+            if (!rival().tieneBarcosVivos()) {
+                terminarPartida(jugadorActivo, MotivoFin.HUNDIMIENTO);
+                return;
+            }
+        }
+        notificarCambio();
     }
 
     @Override
@@ -460,7 +507,7 @@ public class GestorPartida implements Partida {
 
         cancelarSeleccion();
         actualizarDominacion();
-        registrarEvento(TipoEvento.FIN_TURNO, jugadorActivo.getNombre() + "termino su turno");
+        registrarEvento(TipoEvento.FIN_TURNO, jugadorActivo.getNombre() + " termino su turno");
         jugadorActivo.getResumen().limpiar();
 
         if (jugadorActivo.getPuntosDominacion() >= PUNTOS_DOMINACION_VICTORIA) {
@@ -469,7 +516,7 @@ public class GestorPartida implements Partida {
         }
 
         if (jugadorActivo == jugador2 && ronda == TURNOS_MAX) {
-            resolverLimiteDeTurnos();   // Pendiente
+            resolverLimiteDeTurnos();
             return;
         }
 
@@ -889,7 +936,24 @@ public class GestorPartida implements Partida {
 
     @Override
     public List<EstadoBarco> getObjetivosValidos() {
-        throw new UnsupportedOperationException("Pendiente: PAR-09 (#54)");
+        List<EstadoBarco> objetivos = new ArrayList<>();
+        if (barcoSeleccionado == null || !barcoSeleccionado.puedeDisparar()) {
+            return objetivos;
+        }
+        for (Barco enemigo : rival().getBarcosVivos()) {
+            if (puedeAlcanzar(barcoSeleccionado, enemigo)) {
+                objetivos.add(aEstadoBarco(enemigo, rival().getNumero(), false));
+            }
+        }
+        return List.copyOf(objetivos);
+    }
+
+    private boolean puedeAlcanzar(Barco tirador, Barco objetivo) {
+        Posicion desde = tirador.getPosicion();
+        Posicion hasta = objetivo.getPosicion();
+        return esBarcoVisibleParaJugador(jugadorActivo, objetivo)
+                && tirador.estaEnRango(desde.distanciaChebyshev(hasta))
+                && tablero.hayLineaDeVision(desde, hasta);
     }
 
     @Override
