@@ -58,10 +58,13 @@ class PanelTableroTest {
     }
 
     @Test
-    void sinAccionConfiguradaElClicNoHaceNada() {
+    void sinAccionConfiguradaElClicHaceLoDeLaFaseDeJuego() {
+        // Con un barco seleccionado, el clic de combate agrega la casilla a la ruta
+        partida.seleccionado = PartidaFalsa.crucero(1, new Posicion(3, 3));
+
         clicEn(4, 4);
 
-        assertTrue(clics.isEmpty());
+        assertEquals(List.of(new Posicion(4, 4)), partida.ruta);
     }
 
     @Test
