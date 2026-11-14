@@ -26,7 +26,7 @@ public class ConfiguracionJuego {
     private final Path archivo;
     private final Properties propiedades;
 
-    public ConfiguracionJuego(Path archivo, Properties propiedades) {
+    private ConfiguracionJuego(Path archivo, Properties propiedades) {
         this.archivo = archivo;
         this.propiedades = propiedades;
     }
@@ -35,7 +35,7 @@ public class ConfiguracionJuego {
         return cargar(RutasApp.CONFIGURACION);
     }
 
-    /// caerrga la configuración desde un archivo, creando uno nuevo con valores por defecto si no existe o está corrupto.
+    /// carga la configuración desde un archivo, creando uno nuevo con valores por defecto si no existe o está corrupto.
     public static ConfiguracionJuego cargar(Path archivo) {
         Properties propiedades = new Properties();
         boolean hayQueReescribir = false;
@@ -62,7 +62,7 @@ public class ConfiguracionJuego {
         }
         return configuracion;
     }
-//guarda la conf del archivo correspondiente y crea las carperas si no existen
+//guarda la conf del archivo correspondiente y crea las carpetas si no existen
     public void guardar() throws PersistenciaException {
         try {
             Path carpeta = archivo.getParent();
