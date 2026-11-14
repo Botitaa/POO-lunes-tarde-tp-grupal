@@ -2,24 +2,14 @@ package batallanaval.controlador;
 
 import batallanaval.excepciones.AccionInvalidaException;
 import batallanaval.excepciones.DespliegueInvalidoException;
+import batallanaval.excepciones.MovimientoInvalidoException;
 import batallanaval.historial.EventoPartida;
 import batallanaval.historial.HistorialPartida;
 import batallanaval.historial.TipoEvento;
-import batallanaval.modelo.Acorazado;
-import batallanaval.modelo.Barco;
-import batallanaval.modelo.Casilla;
-import batallanaval.modelo.Crucero;
-import batallanaval.modelo.Destructor;
-import batallanaval.modelo.Jugador;
-import batallanaval.modelo.Posicion;
-import batallanaval.modelo.Tablero;
+import batallanaval.modelo.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Controlador principal de las reglas del juego y coordinador del estado de la partida (patrón Controlador GRASP).
@@ -344,19 +334,60 @@ public class GestorPartida implements Partida {
     @Override
     public void seleccionarBarco(int id) {
         exigirEnJuego();
-        throw new UnsupportedOperationException("Pendiente: PAR-07 (#52)");
+        Barco barco = jugadorActivo.getBarcoPorId(id);
+        if (barco == null || barco.estaHundido()) {
+            throw new MovimientoInvalidoException("Ese barco no es tuyo o está hundido.");
+        }
+        if (barco != barcoSeleccionado) {
+            rutaPlanificada.clear();
+        }
+        barcoSeleccionado = barco;
+        notificarCambio();
     }
 
     @Override
     public void agregarPaso(Posicion destino) {
         exigirEnJuego();
-        throw new UnsupportedOperationException("Pendiente: PAR-07 (#52)");
+        Objects.requireNonNull(destino, "El destino no puede ser nulo.");
+
+        if (barcoSeleccionado == null) {
+            throw new MovimientoInvalidoException("Primero seleccioná un barco.");
+        }
+        if (!barcoSeleccionado.puedeMoverse()) {
+            throw new MovimientoInvalidoException("Ese barco ya no puede moverse en este turno.");
+        }
+        Posicion desde = finDeRuta();
+        if (desde.distanciaChebyshev(destino) != 1) {
+            throw new MovimientoInvalidoException("Solo podés avanzar a una casilla vecina.");
+        }
+        if (!tablero.esTransitable(destino) || tablero.esDiagonalBloqueada(desde, destino)) {
+            throw new MovimientoInvalidoException("No se puede pasar por esa casilla.");
+        }
+        if (posicionesDeOtrosBarcosPropios().contains(destino)) {
+            throw new MovimientoInvalidoException("Ya hay un barco tuyo en esa casilla.");
+        }
+        if (rutaPlanificada.size() >= barcoSeleccionado.getCasillasRestantes()) {
+            throw new MovimientoInvalidoException("Ese barco no puede avanzar más casillas en este turno.");
+        }
+
+        int costoPaso = barcoSeleccionado.getEstadisticas().costoMovimiento();
+
+        if (getCostoRuta() + costoPaso > jugadorActivo.getPuntosMovimiento()) {
+            throw new MovimientoInvalidoException("No te alcanzan los puntos de movimiento.");
+        }
+
+        rutaPlanificada.add(destino);
+        notificarCambio();
     }
 
     @Override
     public void deshacerPaso() {
         exigirEnJuego();
-        throw new UnsupportedOperationException("Pendiente: PAR-07 (#52)");
+        if (rutaPlanificada.isEmpty()) {
+            return;
+        }
+        rutaPlanificada.removeLast();
+        notificarCambio();
     }
 
     @Override
@@ -732,22 +763,53 @@ public class GestorPartida implements Partida {
 
     @Override
     public EstadoBarco getBarcoSeleccionado() {
-        throw new UnsupportedOperationException("Pendiente: PAR-07 (#52)");
+        if (barcoSeleccionado == null) {
+            return null;
+        }
+        return aEstadoBarco(barcoSeleccionado, jugadorActivo.getNumero(), true);
     }
 
     @Override
     public List<Posicion> getRutaPlanificada() {
-        throw new UnsupportedOperationException("Pendiente: PAR-07 (#52)");
+        return List.copyOf(rutaPlanificada);
     }
 
     @Override
     public int getCostoRuta() {
-        throw new UnsupportedOperationException("Pendiente: PAR-07 (#52)");
+        if (barcoSeleccionado == null) {
+            return 0;
+        }
+        return rutaPlanificada.size() * barcoSeleccionado.getEstadisticas().costoMovimiento();
     }
 
     @Override
     public Set<Posicion> getCasillasAlcanzables() {
-        throw new UnsupportedOperationException("Pendiente: PAR-07 (#52)");
+        if (barcoSeleccionado == null || !barcoSeleccionado.puedeMoverse()) {
+            return Set.of();
+        }
+        int costoPaso = barcoSeleccionado.getEstadisticas().costoMovimiento();
+        int pasosPorCasillas = barcoSeleccionado.getCasillasRestantes() - rutaPlanificada.size();
+        int pasosPorPuntos = (jugadorActivo.getPuntosMovimiento() - getCostoRuta()) / costoPaso;
+        int pasosMax = Math.max(0, Math.min(pasosPorCasillas, pasosPorPuntos));
+        return Navegacion.casillasAlcanzables(tablero, finDeRuta(), pasosMax, posicionesDeOtrosBarcosPropios());
+    }
+
+    private Posicion finDeRuta() {
+        if (rutaPlanificada.isEmpty()) {
+            return barcoSeleccionado.getPosicion();
+        }
+        return rutaPlanificada.getLast();
+    }
+
+    private Set<Posicion> posicionesDeOtrosBarcosPropios() {
+        Set<Posicion> ocupadas = new HashSet<>();
+        for (Barco barco : jugadorActivo.getBarcosVivos()) {
+            if (barco != barcoSeleccionado) {
+                ocupadas.add(barco.getPosicion());
+            }
+        }
+        // Pendiente: sumar los enemigos visibles cuando esté la visibilidad (#55)
+        return ocupadas;
     }
 
     @Override
