@@ -40,7 +40,8 @@ import java.util.Set;
  * los barcos propios y los enemigos visibles (símbolo, vida y barra de vida, con el color del jugador)
  * y la niebla de guerra sobre las casillas que el jugador no ve.
  * Cuando hay un barco seleccionado, lo resalta, sombrea las casillas a las que puede llegar
- * y dibuja la ruta planificada paso a paso con su costo.
+ * y dibuja la ruta planificada paso a paso con su costo. Si ese barco puede disparar, marca en rojo
+ * los objetivos válidos, y un clic sobre uno de ellos dispara.
  * Al pasar el mouse sobre un barco muestra un tooltip con sus atributos.
  * Atajos de teclado (key bindings): Esc cancela la selección, Backspace deshace el último paso
  * de la ruta y Enter confirma el movimiento.
@@ -56,7 +57,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     // Parte de la partida que necesita el panel para dibujar (ISP: no recibe la Partida entera)
     private final PartidaTablero partidaTablero;
 
-    // Acciones del turno que disparan los atajos de teclado (ISP: solo las de combate)
+    // Acciones del turno que disparan los atajos de teclado y el clic sobre un objetivo (ISP: solo las de combate)
     private final PartidaCombate partidaCombate;
 
     // Guarda la posición de la celda sobre la cual está el mouse actualmente
@@ -66,7 +67,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
      * Crea el panel del tablero.
      *
      * @param partidaTablero consultas de la partida de las que se leen las casillas y las zonas.
-     * @param partidaCombate acciones del turno que llaman los atajos de teclado.
+     * @param partidaCombate acciones del turno que llaman los atajos de teclado y el clic sobre un objetivo.
      * @throws NullPointerException si alguno de los dos es nulo.
      */
     public PanelTablero(PartidaTablero partidaTablero, PartidaCombate partidaCombate) {
@@ -87,7 +88,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
 
     /**
      * Dibuja las casillas, las zonas de despliegue, la niebla de guerra, las casillas alcanzables,
-     * la ruta planificada, los barcos, el barco seleccionado, la zona de dominación
+     * la ruta planificada, los barcos, los objetivos válidos, el barco seleccionado, la zona de dominación
      * y el resaltado de la casilla bajo el mouse.
      *
      * @param g contexto gráfico que entrega Swing
@@ -184,6 +185,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         // Los enemigos son solo los que la partida dice que el jugador ve (no se recalcula acá).
         dibujarBarcos(g2d, partidaTablero.getBarcosPropios(), tamanoCelda, inicioX, inicioY);
         dibujarBarcos(g2d, partidaTablero.getBarcosEnemigosVisibles(), tamanoCelda, inicioX, inicioY);
+
+        // Objetivos válidos del barco seleccionado: borde rojo sobre cada uno
+        dibujarObjetivosValidos(g2d, tamanoCelda, inicioX, inicioY);
 
         // El barco seleccionado lleva un borde amarillo, arriba de su dibujo
         dibujarBarcoSeleccionado(g2d, tamanoCelda, inicioX, inicioY);
@@ -342,6 +346,43 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         g2d.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, Math.max(9, tamanoCelda / 5)));
         FontMetrics medidasCosto = g2d.getFontMetrics();
         g2d.drawString(costo, x + (tamanoCelda - medidasCosto.stringWidth(costo)) / 2, y + tamanoCelda - 4);
+    }
+
+    // Objetivos válidos y disparo con clic 
+
+    /**
+     * Marca con un borde rojo cada objetivo válido. La partida decide cuáles son
+     * (visibles, en rango, con línea de visión y con el tirador listo para disparar);
+     * si no hay barco seleccionado o no puede disparar, la lista viene vacía y no se marca nada.
+     */
+    private void dibujarObjetivosValidos(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
+        g2d.setColor(new Color(220, 30, 30)); // Rojo
+        g2d.setStroke(new BasicStroke(3));
+        for (EstadoBarco objetivo : partidaTablero.getObjetivosValidos()) {
+            Posicion pos = objetivo.posicion();
+            if (pos != null) {
+                int x = inicioX + (pos.getColumna() * tamanoCelda);
+                int y = inicioY + (pos.getFila() * tamanoCelda);
+                g2d.drawRect(x + 2, y + 2, tamanoCelda - 4, tamanoCelda - 4);
+            }
+        }
+    }
+
+    /**
+     * Si en la posición clickeada hay un objetivo válido, le dispara.
+     * El panel no valida el disparo: llama a la partida y, si lo rechaza, muestra el mensaje.
+     */
+    private void dispararSiHayObjetivo(Posicion pos) {
+        for (EstadoBarco objetivo : partidaTablero.getObjetivosValidos()) {
+            if (pos.equals(objetivo.posicion())) {
+                try {
+                    partidaCombate.disparar(objetivo.id());
+                } catch (AccionInvalidaException ex) {
+                    mostrarError(ex);
+                }
+                return;
+            }
+        }
     }
 
     // Atajos de teclado 
@@ -567,7 +608,8 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     public void mouseClicked(MouseEvent e) {
         Posicion posClicked = obtenerPosicionDesdeCoordenadas(e.getX(), e.getY());
         if (posClicked != null) {
-            // Aquí se conectará con la partida cuando el controlador esté integrado
+            // Clic sobre un objetivo válido: se le dispara
+            dispararSiHayObjetivo(posClicked);
         }
     }
 
