@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.io.Serial;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -28,8 +30,11 @@ import batallanaval.persistencia.EstadisticaJugador;
  * define {@code CalculadoraRanking.calcular(...)}, y quien arma la pantalla (en la aplicación,
  * {@code ControladorAplicacion}) tiene que llamar a {@link #cargarRanking(List)} cada vez que la
  * va a mostrar, para que refleje las partidas más recientes.
+ * <p>
+ * Tiene su propio hilo ({@link PanelConHilo}): cada {@value #INTERVALO_MS} ms muestra cuántos
+ * jugadores hay en el ranking y la hora. El hilo lo inicia y lo detiene la {@link VentanaPrincipal}.
  */
-public final class PanelEstadisticas extends JPanel {
+public final class PanelEstadisticas extends PanelConHilo {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -43,10 +48,15 @@ public final class PanelEstadisticas extends JPanel {
 
     // Siempre con coma decimal, sin depender del idioma configurado en el sistema operativo.
     private static final Locale LOCALE_PORCENTAJE = Locale.forLanguageTag("es-AR");
+    private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    /** Cada cuántos milisegundos se actualiza el contador y la hora. */
+    static final int INTERVALO_MS = 1000;
 
     private final VentanaPrincipal ventana;
     private final ModeloRanking modelo = new ModeloRanking();
     private final JLabel avisoSinDatos = new JLabel(MENSAJE_SIN_DATOS, SwingConstants.CENTER);
+    private final JLabel etiquetaEstado = new JLabel(" ", SwingConstants.CENTER);
 
     /**
      * Crea la pantalla con la tabla vacía.
@@ -113,10 +123,32 @@ public final class PanelEstadisticas extends JPanel {
                 EjecutorAcciones.alTocar(() -> ventana.mostrar(Pantalla.INICIO), ventana::mostrarError));
         JPanel pie = new JPanel(new FlowLayout(FlowLayout.CENTER));
         pie.add(botonVolver);
-        add(pie, BorderLayout.SOUTH);
+        etiquetaEstado.setName("etiquetaEstado");
+        JPanel abajo = new JPanel(new BorderLayout());
+        abajo.add(pie, BorderLayout.CENTER);
+        abajo.add(etiquetaEstado, BorderLayout.SOUTH);
+        add(abajo, BorderLayout.SOUTH);
 
         // Todavía no se cargó nada: se muestra el aviso hasta la primera llamada a cargarRanking.
         avisoSinDatos.setVisible(true);
+    }
+
+    // Hilo propio (PanelConHilo)
+
+    /**
+     * Paso del hilo propio: muestra cuántos jugadores hay en el ranking y la hora.
+     * Lo ejecuta el EDT cada {@value #INTERVALO_MS} ms.
+     */
+    @Override
+    protected void actualizar() {
+        etiquetaEstado.setText(modelo.getRowCount() + " jugadores en el ranking · "
+                + LocalTime.now().format(FORMATO_HORA));
+    }
+
+    /** @return {@value #INTERVALO_MS} */
+    @Override
+    protected int getIntervaloMs() {
+        return INTERVALO_MS;
     }
 
     /** Modelo de la tabla: las columnas fijas del ranking y ninguna celda editable. */

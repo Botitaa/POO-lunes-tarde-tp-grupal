@@ -18,6 +18,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
@@ -41,12 +42,17 @@ import java.util.function.Consumer;
  * los barcos propios y los enemigos visibles (símbolo, vida y barra de vida, con el color del jugador)
  * y la niebla de guerra sobre las casillas que el jugador no ve.
  * Cuando hay un barco seleccionado, lo resalta, sombrea las casillas a las que puede llegar
- * y dibuja la ruta planificada paso a paso con su costo.
+ * y dibuja la ruta planificada paso a paso con su costo. Si ese barco puede disparar, marca en rojo
+ * los objetivos válidos, y un clic sobre uno de ellos dispara. Después del disparo, la casilla del
+ * objetivo destella un instante: naranja si recibió daño, amarillo más largo si se hundió.
+ * Un clic en un barco propio lo selecciona y, con un barco seleccionado, un clic en otra casilla
+ * agrega ese paso a la ruta (después se confirma con Enter o con el botón del panel lateral).
  * Al pasar el mouse sobre un barco muestra un tooltip con sus atributos.
  * Atajos de teclado (key bindings): Esc cancela la selección, Backspace deshace el último paso
  * de la ruta y Enter confirma el movimiento.
  * Todo lo que dibuja se lo pregunta a PartidaTablero: el panel no conoce el Tablero.
- * Qué significa un clic lo decide quien arma el panel con {@link #setAlClickearCasilla(Consumer)}.
+ * Quien arma el panel puede cambiar qué hace un clic con {@link #setAlClickearCasilla(Consumer)}
+ * (la pantalla de despliegue lo usa para ubicar barcos).
  * En el despliegue se activa {@link #setModoDespliegue(boolean)}: sin niebla y sin atajos de combate.
  * Implementa ObservadorPartida: quien crea el panel lo registra en la partida con
  * agregarObservador, y desde ahí el panel se redibuja ante cada cambio.
@@ -56,16 +62,26 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     private static final int FILAS = 10;
     private static final int COLUMNAS = 10;
 
+    // Duración de los destellos de disparo y de hundimiento, en milisegundos
+    private static final int DURACION_DESTELLO_DISPARO = 400;
+    private static final int DURACION_DESTELLO_HUNDIMIENTO = 900;
+
     // Parte de la partida que necesita el panel para dibujar (ISP: no recibe la Partida entera)
     private final PartidaTablero partidaTablero;
 
-    // Acciones del turno que disparan los atajos de teclado (ISP: solo las de combate)
+    // Acciones del turno que llaman los atajos de teclado y los clics: seleccionar, mover y disparar (ISP: solo las de combate)
     private final PartidaCombate partidaCombate;
 
     // Guarda la posición de la celda sobre la cual está el mouse actualmente
     private Posicion casillaHover = null;
 
-    // Qué hacer cuando se hace clic en una casilla del tablero (null: el clic no hace nada)
+    // Destello después de un disparo: en qué casilla, si fue un hundimiento,
+    // y el Timer que lo apaga cuando pasa el tiempo
+    private Posicion casillaDestello = null;
+    private boolean destelloEsHundimiento = false;
+    private final Timer temporizadorDestello;
+
+    // Qué hacer cuando se hace clic en una casilla (null: el clic es de la fase de juego)
     private transient Consumer<Posicion> alClickearCasilla = null;
 
     // En el despliegue no hay niebla (el jugador tiene que ver su zona) ni atajos de combate
@@ -75,7 +91,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
      * Crea el panel del tablero.
      *
      * @param partidaTablero consultas de la partida de las que se leen las casillas y las zonas.
-     * @param partidaCombate acciones del turno que llaman los atajos de teclado.
+     * @param partidaCombate acciones del turno que llaman los atajos de teclado y los clics en el tablero.
      * @throws NullPointerException si alguno de los dos es nulo.
      */
     public PanelTablero(PartidaTablero partidaTablero, PartidaCombate partidaCombate) {
@@ -92,15 +108,21 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
 
         // Atajos de teclado: Esc, Backspace y Enter
         registrarAtajosDeTeclado();
+
+        // Timer de Swing para apagar el destello: avisa una sola vez (no se repite)
+        // y corre en el hilo de eventos (EDT), así que puede repintar sin problemas
+        temporizadorDestello = new Timer(DURACION_DESTELLO_DISPARO, e -> terminarDestello());
+        temporizadorDestello.setRepeats(false);
     }
 
     /**
      * Define qué pasa cuando el jugador hace clic en una casilla del tablero. El panel solo traduce
      * los píxeles a una {@link Posicion}; quien lo armó decide qué hacer con ella (en el despliegue,
-     * ubicar un barco). Los clics fuera de la grilla no se informan.
+     * ubicar un barco). Los clics fuera de la grilla no se informan. Si no se define ninguna acción,
+     * el clic hace lo de la fase de juego: disparar, seleccionar un barco o agregar un paso.
      *
-     * @param alClickearCasilla acción que recibe la casilla clickeada, o {@code null} para que los
-     *                          clics no hagan nada
+     * @param alClickearCasilla acción que recibe la casilla clickeada, o {@code null} para usar el
+     *                          comportamiento de la fase de juego
      */
     public void setAlClickearCasilla(Consumer<Posicion> alClickearCasilla) {
         this.alClickearCasilla = alClickearCasilla;
@@ -120,8 +142,8 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
 
     /**
      * Dibuja las casillas, las zonas de despliegue, la niebla de guerra, las casillas alcanzables,
-     * la ruta planificada, los barcos, el barco seleccionado, la zona de dominación
-     * y el resaltado de la casilla bajo el mouse.
+     * la ruta planificada, los barcos, los objetivos válidos, el barco seleccionado, la zona de dominación,
+     * el resaltado de la casilla bajo el mouse y el destello de un disparo.
      *
      * @param g contexto gráfico que entrega Swing
      */
@@ -218,6 +240,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         dibujarBarcos(g2d, partidaTablero.getBarcosPropios(), tamanoCelda, inicioX, inicioY);
         dibujarBarcos(g2d, partidaTablero.getBarcosEnemigosVisibles(), tamanoCelda, inicioX, inicioY);
 
+        // Objetivos válidos del barco seleccionado: borde rojo sobre cada uno
+        dibujarObjetivosValidos(g2d, tamanoCelda, inicioX, inicioY);
+
         // El barco seleccionado lleva un borde amarillo, arriba de su dibujo
         dibujarBarcoSeleccionado(g2d, tamanoCelda, inicioX, inicioY);
 
@@ -245,6 +270,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
             g2d.setStroke(new BasicStroke(2));
             g2d.drawRect(x, y, tamanoCelda, tamanoCelda);
         }
+
+        // Destello de disparo o hundimiento, arriba de todo
+        dibujarDestello(g2d, tamanoCelda, inicioX, inicioY);
     }
 
     // Dibujo de barcos 
@@ -375,6 +403,132 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         g2d.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, Math.max(9, tamanoCelda / 5)));
         FontMetrics medidasCosto = g2d.getFontMetrics();
         g2d.drawString(costo, x + (tamanoCelda - medidasCosto.stringWidth(costo)) / 2, y + tamanoCelda - 4);
+    }
+
+    // Objetivos válidos y disparo con clic 
+
+    /**
+     * Marca con un borde rojo cada objetivo válido. La partida decide cuáles son
+     * (visibles, en rango, con línea de visión y con el tirador listo para disparar);
+     * si no hay barco seleccionado o no puede disparar, la lista viene vacía y no se marca nada.
+     */
+    private void dibujarObjetivosValidos(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
+        g2d.setColor(new Color(220, 30, 30)); // Rojo
+        g2d.setStroke(new BasicStroke(3));
+        for (EstadoBarco objetivo : partidaTablero.getObjetivosValidos()) {
+            Posicion pos = objetivo.posicion();
+            if (pos != null) {
+                int x = inicioX + (pos.getColumna() * tamanoCelda);
+                int y = inicioY + (pos.getFila() * tamanoCelda);
+                g2d.drawRect(x + 2, y + 2, tamanoCelda - 4, tamanoCelda - 4);
+            }
+        }
+    }
+
+    /**
+     * Si en la posición clickeada hay un objetivo válido, le dispara.
+     * El panel no valida el disparo: llama a la partida y, si lo rechaza, muestra el mensaje.
+     *
+     * @return true si había un objetivo en esa casilla (el clic ya se usó para disparar)
+     */
+    private boolean dispararSiHayObjetivo(Posicion pos) {
+        for (EstadoBarco objetivo : partidaTablero.getObjetivosValidos()) {
+            if (pos.equals(objetivo.posicion())) {
+                try {
+                    partidaCombate.disparar(objetivo.id());
+                    // Si después del disparo la casilla quedó como restos, el barco se hundió
+                    iniciarDestello(pos, partidaTablero.getCasilla(pos) == Casilla.RESTOS);
+                } catch (AccionInvalidaException ex) {
+                    mostrarError(ex);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Selección y movimiento con clic
+
+    /**
+     * Si en la posición clickeada hay un barco propio, lo selecciona.
+     *
+     * @return true si había un barco propio en esa casilla (el clic ya se usó para seleccionar)
+     */
+    private boolean seleccionarSiEsPropio(Posicion pos) {
+        for (EstadoBarco barco : partidaTablero.getBarcosPropios()) {
+            if (pos.equals(barco.posicion())) {
+                try {
+                    partidaCombate.seleccionarBarco(barco.id());
+                } catch (AccionInvalidaException ex) {
+                    mostrarError(ex);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Con un barco seleccionado, agrega la casilla clickeada como siguiente paso de la ruta.
+     * Si no hay barco seleccionado no hace nada. Las reglas (casilla vecina, obstáculos,
+     * puntos de movimiento) las valida la partida; si el paso no vale, se muestra el mensaje.
+     */
+    private void agregarPasoSiHaySeleccion(Posicion pos) {
+        if (partidaTablero.getBarcoSeleccionado() == null) {
+            return;
+        }
+        try {
+            partidaCombate.agregarPaso(pos);
+        } catch (AccionInvalidaException ex) {
+            mostrarError(ex);
+        }
+    }
+
+    // Destello de disparo e hundimiento 
+
+    /**
+     * Prende el destello en la casilla del disparo y arranca el Timer que lo apaga.
+     * El de hundimiento dura más, para que se note la diferencia.
+     */
+    private void iniciarDestello(Posicion pos, boolean hundimiento) {
+        casillaDestello = pos;
+        destelloEsHundimiento = hundimiento;
+        if (hundimiento) {
+            temporizadorDestello.setInitialDelay(DURACION_DESTELLO_HUNDIMIENTO);
+        } else {
+            temporizadorDestello.setInitialDelay(DURACION_DESTELLO_DISPARO);
+        }
+        temporizadorDestello.restart(); // si había otro destello, empieza a contar de nuevo
+        repaint();
+    }
+
+    /** Apaga el destello. Lo llama el Timer cuando se cumple el tiempo. */
+    private void terminarDestello() {
+        casillaDestello = null;
+        repaint();
+    }
+
+    /**
+     * Dibuja el destello, si hay uno prendido: naranja para un disparo,
+     * amarillo con borde blanco para un hundimiento.
+     */
+    private void dibujarDestello(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
+        if (casillaDestello == null) {
+            return;
+        }
+        int x = inicioX + (casillaDestello.getColumna() * tamanoCelda);
+        int y = inicioY + (casillaDestello.getFila() * tamanoCelda);
+        if (destelloEsHundimiento) {
+            g2d.setColor(new Color(255, 230, 0, 200)); // Amarillo: hundimiento
+        } else {
+            g2d.setColor(new Color(255, 100, 0, 170)); // Naranja: disparo
+        }
+        g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
+        if (destelloEsHundimiento) {
+            g2d.setColor(Color.WHITE);
+            g2d.setStroke(new BasicStroke(3));
+            g2d.drawRect(x + 1, y + 1, tamanoCelda - 2, tamanoCelda - 2);
+        }
     }
 
     // Atajos de teclado 
@@ -608,9 +762,25 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     @Override
     public void mouseClicked(MouseEvent e) {
         Posicion posClicked = obtenerPosicionDesdeCoordenadas(e.getX(), e.getY());
-        if (posClicked != null && alClickearCasilla != null) {
-            alClickearCasilla.accept(posClicked);
+        if (posClicked == null) {
+            return;
         }
+        // Si quien armó el panel definió qué hacer con un clic (por ejemplo, la pantalla de
+        // despliegue para ubicar barcos), se usa eso y nada más
+        if (alClickearCasilla != null) {
+            alClickearCasilla.accept(posClicked);
+            return;
+        }
+        // Si no, el clic es de la fase de juego. Se prueba en orden: disparar a un objetivo,
+        // seleccionar un barco propio o agregar un paso. Cada método devuelve true si usó el clic,
+        // así no se hacen dos acciones con el mismo clic.
+        if (dispararSiHayObjetivo(posClicked)) {
+            return;
+        }
+        if (seleccionarSiEsPropio(posClicked)) {
+            return;
+        }
+        agregarPasoSiHaySeleccion(posClicked);
     }
 
     @Override
