@@ -1,9 +1,6 @@
 package batallanaval.controlador;
 
-import batallanaval.excepciones.AccionInvalidaException;
-import batallanaval.excepciones.DespliegueInvalidoException;
-import batallanaval.excepciones.MovimientoInvalidoException;
-import batallanaval.excepciones.DisparoInvalidoException;
+import batallanaval.excepciones.*;
 import batallanaval.historial.EventoPartida;
 import batallanaval.historial.HistorialPartida;
 import batallanaval.historial.TipoEvento;
@@ -446,7 +443,13 @@ public class GestorPartida implements Partida {
     @Override
     public void usarHabilidad() {
         exigirEnJuego();
-        throw new UnsupportedOperationException("Pendiente: PAR-11 (#56)");
+        if (barcoSeleccionado == null) {
+            throw new HabilidadNoDisponibleException("Primero seleccioná un barco.");
+        }
+        barcoSeleccionado.usarHabilidad(); // si está en espera o ya activa, tira HabilidadNoDisponibleException
+        registrarEvento(TipoEvento.HABILIDAD, barcoSeleccionado.getSimbolo() + " en " + barcoSeleccionado.getPosicion() + " usó su habilidad");
+        accionRealizadaEnTurno = true;
+        notificarCambio();
     }
 
     @Override
@@ -479,8 +482,7 @@ public class GestorPartida implements Partida {
 
         rival().getResumen().agregarDisparoRecibido(objetivo, danio, origen);
 
-        registrarEvento(TipoEvento.DISPARO, tirador.getSimbolo() + " " + origen + " -> "
-                + objetivo.getSimbolo() + " " + posicionObjetivo + ", -" + danio);
+        registrarEvento(TipoEvento.DISPARO, tirador.getSimbolo() + " " + origen + " -> " + objetivo.getSimbolo() + " " + posicionObjetivo + ", -" + danio);
 
         accionRealizadaEnTurno = true;
 
@@ -490,8 +492,7 @@ public class GestorPartida implements Partida {
             tablero.convertirEnRestos(posicionObjetivo);
             rival().getResumen().agregarBarcoHundido(objetivo, posicionObjetivo);
 
-            registrarEvento(TipoEvento.HUNDIMIENTO, objetivo.getSimbolo() + " de " + rival().getNombre()
-                    + " hundido en " + posicionObjetivo);
+            registrarEvento(TipoEvento.HUNDIMIENTO, objetivo.getSimbolo() + " de " + rival().getNombre() + " hundido en " + posicionObjetivo);
 
             if (!rival().tieneBarcosVivos()) {
                 terminarPartida(jugadorActivo, MotivoFin.HUNDIMIENTO);
