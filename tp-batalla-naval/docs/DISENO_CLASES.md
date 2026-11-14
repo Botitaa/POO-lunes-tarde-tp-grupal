@@ -188,7 +188,7 @@ public static Tablero cargar(String nombreRecurso) throws PersistenciaException
 ### RepositorioPartidas (interfaz)
 
 ```java
-void guardar(GestorPartida partida, String nombre) throws PersistenciaException;
+void guardar(InstantaneaPartida instantanea, String nombre) throws PersistenciaException; // la copia se arma antes, en el EDT
 GestorPartida cargar(String nombre) throws PersistenciaException;
 List<CabeceraGuardado> listar() throws PersistenciaException;   // más nuevo primero
 void borrar(String nombre) throws PersistenciaException;
@@ -212,8 +212,10 @@ public record CabeceraGuardado(int versionFormato, String nombre, LocalDateTime 
 public static final int VERSION_FORMATO = 1;
 private final Path carpeta;
 
-// guardar: valida el nombre (letras, números, - y _, hasta 40), exige partida.puedeGuardarse(),
-//   pide partida.crearInstantanea() y escribe el archivo. Cualquier IOException -> PersistenciaException.
+// guardar: valida el nombre (letras, números, - y _, hasta 40), exige que la instantánea sea de una
+//   partida EN_JUEGO y escribe el archivo. Solo lee la instantánea (nunca el GestorPartida), así que se
+//   puede llamar desde un hilo aparte; puedeGuardarse() lo chequea quien arma la instantánea
+//   (AccionGuardarPartida, en el EDT). Cualquier IOException -> PersistenciaException.
 // cargar: lee línea por línea, chequea la marca y VERSION_FORMATO, arma la InstantaneaPartida,
 //   llama a GestorPartida.restaurar(instantanea, tablero), que valida el estado por dentro (validarEstado)
 //   y lanza IllegalStateException si es imposible; el repositorio la envuelve en PersistenciaException.
@@ -329,9 +331,9 @@ Una sola ventana con `CardLayout`. Cada pantalla es un `JPanel` que recibe lo qu
 | `PanelEstadisticas` | `JPanel` | `JTable` con el ranking de `CalculadoraRanking`. |
 | `PanelReglas` | `JPanel` | Texto de reglas en un `JScrollPane`. |
 | `BarraMenuJuego` | `extends JMenuBar implements ObservadorPartida` | Partida → Guardar (Ctrl+S), Cargar (Ctrl+O), Abandonar (con confirmación); Ayuda → Reglas (F1). `BarraMenuJuego(Runnable alGuardar, Runnable alCargar, Runnable alAbandonar, Runnable alVerReglas)`; `mostrarPartida(PartidaConsulta)` (`null` = sin partida) y `actualizar()`. Guardar se habilita solo con `puedeGuardarse()`; Abandonar, con una partida sin terminar; Cargar y Reglas, siempre. La instala `ControladorAplicacion` con `ventana.setJMenuBar(barra)`. |
-| `TareaGuardar` | `implements Runnable` | Escribe la partida en un `Thread` propio para no congelar la ventana. `TareaGuardar(RepositorioPartidas, GestorPartida, String nombre, Consumer<String> alGuardar, Consumer<String> alError, Runnable alTerminar)`. `run()` hace `try { repositorio.guardar(...); invokeLater(alGuardar) } catch (PersistenciaException e) { invokeLater(alError con el mensaje) } finally { invokeLater(alTerminar: volver a habilitar los botones) }`; una `RuntimeException` inesperada también va a `alError` (mensaje genérico) y el `finally` corre igual. El hilo propio solo escribe el archivo: todo lo que toca Swing vuelve al EDT con `invokeLater`. |
+| `TareaGuardar` | `implements Runnable` | Escribe la partida en un `Thread` propio para no congelar la ventana. `TareaGuardar(RepositorioPartidas, InstantaneaPartida, String nombre, Consumer<String> alGuardar, Consumer<String> alError, Runnable alTerminar)`: recibe la instantánea ya armada en el EDT, no la partida, así el hilo nunca lee una partida que otro está modificando. `run()` hace `try { repositorio.guardar(instantanea, nombre); invokeLater(alGuardar) } catch (PersistenciaException e) { invokeLater(alError con el mensaje) } finally { invokeLater(alTerminar: volver a habilitar los botones) }`; una `RuntimeException` inesperada también va a `alError` (`EjecutorAcciones.MENSAJE_ERROR_INESPERADO`, como `TareaCargar`) y el `finally` corre igual. El hilo propio solo escribe el archivo: todo lo que toca Swing vuelve al EDT con `invokeLater`. |
 | `TareaCargar` | `implements Runnable` | Carga en un `Thread` propio. `TareaCargar(RepositorioPartidas, String nombre, Consumer<? super GestorPartida> alCargar, Consumer<String> alError, Runnable alTerminar)`. Mismo esquema `try/catch/finally`: con `invokeLater` entrega la partida a `alCargar` (en la aplicación, `ControladorAplicacion`), o el mensaje a `alError`, y siempre ejecuta `alTerminar`. `PanelCargarPartida` la lanza al tocar Cargar: mientras carga muestra "Cargando partida..." y bloquea Cargar, Borrar y Volver. |
-| `AccionGuardarPartida` | `implements Runnable` | Guardar desde la GUI: se conecta al ítem Guardar de `BarraMenuJuego` y al botón de `PanelBlackout`. Si la partida no se puede guardar (`puedeGuardarse()`) muestra el error sin pedir nombre; si se puede, pide el nombre (`JOptionPane`) y pregunta antes de pisar un guardado existente: esos diálogos corren en el EDT. Después lanza una `TareaGuardar` con `new Thread(tarea).start()`; `alEmpezar` (bloquear botones) se ejecuta antes de lanzar y `alTerminar` (liberarlos) al terminar, salga bien o mal. Mientras hay un guardado en curso rechaza otro. Un `PersistenciaException` va a `alError` (barra de estado); si sale bien avisa con `alAviso`. |
+| `AccionGuardarPartida` | `implements Runnable` | Guardar desde la GUI: se conecta al ítem Guardar de `BarraMenuJuego` y al botón de `PanelBlackout`. Si la partida no se puede guardar (`puedeGuardarse()`) muestra el error sin pedir nombre; si se puede, pide el nombre (`JOptionPane`) y pregunta antes de pisar un guardado existente: esos diálogos corren en el EDT. Después arma la `InstantaneaPartida` con `crearInstantanea()`, también en el EDT, y lanza una `TareaGuardar` con esa copia con `new Thread(tarea).start()`; `alEmpezar` (bloquear botones) se ejecuta antes de lanzar y `alTerminar` (liberarlos) al terminar, salga bien o mal. Mientras hay un guardado en curso rechaza otro. Un `PersistenciaException` va a `alError` (barra de estado); si sale bien avisa con `alAviso`. |
 
 `TareaGuardar` y `TareaCargar` son las que cubren hilos (Unidad 6): se crean con `new Thread(tarea).start()`. El hilo propio nunca toca componentes Swing: todo cambio de pantalla, mensaje o botón vuelve al EDT con `SwingUtilities.invokeLater`.
 
