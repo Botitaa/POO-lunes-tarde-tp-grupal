@@ -356,7 +356,9 @@ public class GestorPartida implements Partida {
         if (!barcoSeleccionado.puedeMoverse()) {
             throw new MovimientoInvalidoException("Ese barco ya no puede moverse en este turno.");
         }
+
         Posicion desde = finDeRuta();
+
         if (desde.distanciaChebyshev(destino) != 1) {
             throw new MovimientoInvalidoException("Solo podés avanzar a una casilla vecina.");
         }
@@ -365,6 +367,9 @@ public class GestorPartida implements Partida {
         }
         if (posicionesDeOtrosBarcosPropios().contains(destino)) {
             throw new MovimientoInvalidoException("Ya hay un barco tuyo en esa casilla.");
+        }
+        if (posicionesDeEnemigosVisibles().contains(destino)) {
+            throw new MovimientoInvalidoException("Hay un barco enemigo en esa casilla.");
         }
         if (rutaPlanificada.size() >= barcoSeleccionado.getCasillasRestantes()) {
             throw new MovimientoInvalidoException("Ese barco no puede avanzar más casillas en este turno.");
@@ -762,7 +767,7 @@ public class GestorPartida implements Partida {
 
     @Override
     public boolean esVisible(Posicion posicion) {
-        throw new UnsupportedOperationException("Pendiente: PAR-10 (#55)");
+        return esVisibleParaJugador(jugadorActivo, posicion);
     }
 
     @Override
@@ -780,15 +785,13 @@ public class GestorPartida implements Partida {
 
     @Override
     public List<EstadoBarco> getBarcosEnemigosVisibles() {
-
-        List<EstadoBarco> barcosEnemigosVisibles = new ArrayList<>();
-
-//        for (Barco barco: rival().getBarcosVivos()){
-//            barcosEnemigosVisibles.add(aEstadoBarco(barco, jugadorActivo.getNumero(), false));
-//        }
-// Pendiente: PAR-10 (#55)
-
-        return List.copyOf(barcosEnemigosVisibles);
+        List<EstadoBarco> visibles = new ArrayList<>();
+        for (Barco barco : rival().getBarcosVivos()) {
+            if (esBarcoVisibleParaJugador(jugadorActivo, barco)) {
+                visibles.add(aEstadoBarco(barco, rival().getNumero(), false));
+            }
+        }
+        return List.copyOf(visibles);
     }
 
     @Override
@@ -821,7 +824,9 @@ public class GestorPartida implements Partida {
         int pasosPorCasillas = barcoSeleccionado.getCasillasRestantes() - rutaPlanificada.size();
         int pasosPorPuntos = (jugadorActivo.getPuntosMovimiento() - getCostoRuta()) / costoPaso;
         int pasosMax = Math.max(0, Math.min(pasosPorCasillas, pasosPorPuntos));
-        return Navegacion.casillasAlcanzables(tablero, finDeRuta(), pasosMax, posicionesDeOtrosBarcosPropios());
+        Set<Posicion> ocupadas = posicionesDeOtrosBarcosPropios();
+        ocupadas.addAll(posicionesDeEnemigosVisibles());
+        return Navegacion.casillasAlcanzables(tablero, finDeRuta(), pasosMax, ocupadas);
     }
 
     private Posicion finDeRuta() {
@@ -838,8 +843,39 @@ public class GestorPartida implements Partida {
                 ocupadas.add(barco.getPosicion());
             }
         }
-        // Pendiente: sumar los enemigos visibles cuando esté la visibilidad (#55)
         return ocupadas;
+    }
+
+    private Set<Posicion> posicionesDeEnemigosVisibles() {
+        Set<Posicion> posiciones = new HashSet<>();
+        for (Barco barco : rival().getBarcosVivos()) {
+            if (esBarcoVisibleParaJugador(jugadorActivo, barco)) {
+                posiciones.add(barco.getPosicion());
+            }
+        }
+        return posiciones;
+    }
+
+    private boolean esVisibleParaJugador(Jugador observador, Posicion posicion) {
+        if (tablero.esZonaDominacion(posicion)) {
+            return true;
+        }
+        for (Barco barco : observador.getBarcosVivos()) {
+            Posicion desde = barco.getPosicion();
+            if (desde == null) {
+                continue; // barco todavía sin ubicar (despliegue)
+            }
+            boolean enRango = desde.distanciaChebyshev(posicion) <= barco.getEstadisticas().vision();
+            if (enRango && tablero.hayLineaDeVision(desde, posicion)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    private boolean esBarcoVisibleParaJugador(Jugador observador, Barco barco) {
+        return barco.estaRevelado() || esVisibleParaJugador(observador, barco.getPosicion());
     }
 
     private Barco barcoRivalEn(Posicion posicion) {

@@ -52,15 +52,30 @@ class GestorPartidaMovimientoTest {
                 new DatosBarco(primerId + 5, 'D', jugador, new Posicion(fila, 5), 3, 0, 0, 4, false, false));
     }
 
-    /** Flotas de siempre, con el destructor 10 de Beto escondido en la posición indicada. */
-    private static List<DatosBarco> conEnemigoEn(Posicion posicion) {
-        List<DatosBarco> barcos = new ArrayList<>();
-        for (DatosBarco barco : flotas()) {
+    /**
+     * Partida para los choques: Ana con el acorazado hundido y los destructores en la esquina de arriba a la
+     * derecha (el 4 en (0,9), que ve solo 2 casillas), y el destructor 10 de Beto escondido en (3,9),
+     * a 3 casillas: ningún barco de Ana lo ve.
+     */
+    private static GestorPartida partidaConEnemigoOculto() {
+        List<DatosBarco> barcos = new ArrayList<>(List.of(
+                new DatosBarco(1, 'A', 1, new Posicion(0, 0), 0, 0, 0, 2, false, false),
+                new DatosBarco(2, 'C', 1, new Posicion(0, 1), 5, 0, 0, 3, false, false),
+                new DatosBarco(3, 'C', 1, new Posicion(0, 2), 5, 0, 0, 3, false, false),
+                new DatosBarco(4, 'D', 1, new Posicion(0, 9), 3, 0, 0, 4, false, false),
+                new DatosBarco(5, 'D', 1, new Posicion(0, 8), 3, 0, 0, 4, false, false),
+                new DatosBarco(6, 'D', 1, new Posicion(0, 7), 3, 0, 0, 4, false, false)));
+        for (DatosBarco barco : flota(2, 7, 8)) {
             barcos.add(barco.id() == 10
-                    ? new DatosBarco(10, 'D', 2, posicion, 3, 0, 0, 4, false, false)
+                    ? new DatosBarco(10, 'D', 2, new Posicion(3, 9), 3, 0, 0, 4, false, false)
                     : barco);
         }
-        return barcos;
+        return partida(barcos);
+    }
+
+    /** Destructor 4 de Ana bajando por la columna 9: el tercer paso cae sobre el enemigo oculto. */
+    private static void planificarHaciaElEnemigo(GestorPartida partida) {
+        planificar(partida, new Posicion(1, 9), new Posicion(2, 9), new Posicion(3, 9), new Posicion(4, 9));
     }
 
     private static DatosBarco datosDe(GestorPartida partida, int idBarco) {
@@ -179,52 +194,49 @@ class GestorPartidaMovimientoTest {
     // ---------- choque con un enemigo oculto ----------
 
     @Test
+    void unEnemigoOcultoNoImpidePlanificarLaRuta() {
+        GestorPartida partida = partidaConEnemigoOculto();
+
+        planificarHaciaElEnemigo(partida);
+
+        assertEquals(4, partida.getRutaPlanificada().size());
+    }
+
+    @Test
     void alChocarConUnEnemigoOcultoFrenaEnElPasoAnterior() {
-        GestorPartida partida = partida(conEnemigoEn(new Posicion(3, 4)));
-        planificar(partida, new Posicion(2, 3), new Posicion(3, 4), new Posicion(4, 4));
+        GestorPartida partida = partidaConEnemigoOculto();
+        planificarHaciaElEnemigo(partida);
 
         partida.confirmarMovimiento();
 
-        assertEquals(new Posicion(2, 3), datosDe(partida, 4).posicion());
+        assertEquals(new Posicion(2, 9), datosDe(partida, 4).posicion());
     }
 
     @Test
     void alChocarSoloSeCobranLosPasosHechos() {
-        GestorPartida partida = partida(conEnemigoEn(new Posicion(3, 4)));
-        planificar(partida, new Posicion(2, 3), new Posicion(3, 4), new Posicion(4, 4));
+        GestorPartida partida = partidaConEnemigoOculto();
+        planificarHaciaElEnemigo(partida);
 
         partida.confirmarMovimiento();
 
-        assertEquals(GestorPartida.PUNTOS_MOVIMIENTO_TURNO - 1, partida.getJugadorActivo().puntosMovimiento());
-        assertEquals(3, datosDe(partida, 4).casillasRestantes());
+        assertEquals(GestorPartida.PUNTOS_MOVIMIENTO_TURNO - 2, partida.getJugadorActivo().puntosMovimiento());
+        assertEquals(2, datosDe(partida, 4).casillasRestantes());
     }
 
     @Test
     void elEnemigoConElQueChocaQuedaRevelado() {
-        GestorPartida partida = partida(conEnemigoEn(new Posicion(3, 4)));
-        planificar(partida, new Posicion(2, 3), new Posicion(3, 4));
+        GestorPartida partida = partidaConEnemigoOculto();
+        planificarHaciaElEnemigo(partida);
 
         partida.confirmarMovimiento();
 
-        assertTrue(datosDe(partida, 10).revelado());
-    }
-
-    @Test
-    void siChocaEnElPrimerPasoNoSeMueveNiGasta() {
-        GestorPartida partida = partida(conEnemigoEn(new Posicion(2, 3)));
-        planificar(partida, new Posicion(2, 3), new Posicion(2, 4));
-
-        partida.confirmarMovimiento();
-
-        assertEquals(new Posicion(1, 3), datosDe(partida, 4).posicion());
-        assertEquals(GestorPartida.PUNTOS_MOVIMIENTO_TURNO, partida.getJugadorActivo().puntosMovimiento());
         assertTrue(datosDe(partida, 10).revelado());
     }
 
     @Test
     void elRevelePorChoqueTerminaCuandoEmpiezaElTurnoDelRival() {
-        GestorPartida partida = partida(conEnemigoEn(new Posicion(3, 4)));
-        planificar(partida, new Posicion(2, 3), new Posicion(3, 4));
+        GestorPartida partida = partidaConEnemigoOculto();
+        planificarHaciaElEnemigo(partida);
         partida.confirmarMovimiento();
 
         partida.terminarTurno();
