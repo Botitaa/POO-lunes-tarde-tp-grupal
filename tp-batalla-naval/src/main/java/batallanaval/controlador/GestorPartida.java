@@ -404,7 +404,37 @@ public class GestorPartida implements Partida {
     @Override
     public void confirmarMovimiento() {
         exigirEnJuego();
-        throw new UnsupportedOperationException("Pendiente: PAR-08 (#53)");
+        if (barcoSeleccionado == null || rutaPlanificada.isEmpty()) {
+            throw new MovimientoInvalidoException("No hay una ruta para confirmar.");
+        }
+
+        // Recorre la ruta hasta el final o hasta chocar con un barco enemigo que no se veía.
+        int pasosHechos = 0;
+        Barco enemigoOculto = null;
+        for (Posicion paso : rutaPlanificada) {
+            enemigoOculto = barcoRivalEn(paso);
+            if (enemigoOculto != null) {
+                break;
+            }
+            pasosHechos++;
+        }
+
+        if (pasosHechos > 0) {
+            Posicion origen = barcoSeleccionado.getPosicion();
+            Posicion destino = rutaPlanificada.get(pasosHechos - 1);
+            jugadorActivo.gastarPuntos(pasosHechos * barcoSeleccionado.getEstadisticas().costoMovimiento());
+            barcoSeleccionado.moverA(destino, pasosHechos);
+            registrarEvento(TipoEvento.MOVIMIENTO, barcoSeleccionado.getSimbolo() + " " + origen + " -> " + destino);
+        }
+        if (enemigoOculto != null) {
+            // Queda revelado hasta que termine este turno: iniciarTurno lo vuelve a ocultar.
+            enemigoOculto.marcarRevelado(true);
+            registrarEvento(TipoEvento.MOVIMIENTO, "Se frenó: hay un barco enemigo en " + enemigoOculto.getPosicion());
+        }
+
+        accionRealizadaEnTurno = true;
+        rutaPlanificada.clear();
+        notificarCambio();
     }
 
     @Override
@@ -810,6 +840,15 @@ public class GestorPartida implements Partida {
         }
         // Pendiente: sumar los enemigos visibles cuando esté la visibilidad (#55)
         return ocupadas;
+    }
+
+    private Barco barcoRivalEn(Posicion posicion) {
+        for (Barco barco : rival().getBarcosVivos()) {
+            if (posicion.equals(barco.getPosicion())) {
+                return barco;
+            }
+        }
+        return null;
     }
 
     @Override
