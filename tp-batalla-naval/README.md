@@ -2,7 +2,7 @@
 
 Juego por turnos para dos jugadores en la misma computadora, hecho en Java + Swing para **Paradigma Orientado a Objetos (3.4.208), UADE, 2º cuatrimestre 2026**. Mezcla la batalla naval clásica con mecánicas de World of Warships: los barcos se mueven, tienen rango y visión, y solo se ataca lo que la flota ve.
 
-- Reglas completas, arquitectura y convenciones: [`docs/CONTEXTO_PROYECTO.md`](docs/CONTEXTO_PROYECTO.md)
+- Cómo se juega (reglas, controles, guardar y cargar): [`docs/MANUAL_USUARIO.md`](docs/MANUAL_USUARIO.md)
 - Qué hace cada clase y sus métodos: [`docs/DISENO_CLASES.md`](docs/DISENO_CLASES.md)
 - Tareas: [issues](https://github.com/Botitaa/POO-lunes-tarde-tp-grupal/issues) y [tablero kanban](https://github.com/users/Botitaa/projects/3)
 
@@ -21,6 +21,8 @@ Todos los comandos se corren dentro de esta carpeta (`tp-batalla-naval/`):
 
 En IntelliJ: clic derecho en `pom.xml` → **Add as Maven Project**. Después se corre `batallanaval.app.Main` con el botón verde.
 
+Las partidas guardadas y las estadísticas se escriben en una carpeta `datos/` que se crea en la carpeta desde la que se abre el juego. Para saber cómo se juega, ver el [manual de usuario](docs/MANUAL_USUARIO.md).
+
 ## Estructura
 
 ```
@@ -34,6 +36,7 @@ src/main/java/batallanaval/
   app/           Main y armado de la aplicación
 src/main/resources/mapas/   mapas en texto
 src/test/java/              tests JUnit
+docs/                       manual de usuario, diseño de clases y diagramas UML
 ```
 
 Cada paquete tiene un `package-info.java` que explica qué va adentro y de quién puede depender. La vista solo habla con la interfaz `Partida`; nunca recibe `Barco`, `Jugador` ni `Tablero`.
