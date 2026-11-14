@@ -12,6 +12,7 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import batallanaval.controlador.GestorPartida;
+import batallanaval.controlador.InstantaneaPartida;
 import batallanaval.excepciones.PersistenciaException;
 import batallanaval.persistencia.RepositorioPartidas;
 
@@ -46,7 +47,8 @@ import batallanaval.persistencia.RepositorioPartidas;
  * <p>
  * <b>Qué corre en cada hilo.</b> Esta acción corre en el EDT (desde un botón o un menú): ahí se
  * piden el nombre y la confirmación, porque los diálogos de Swing no se pueden abrir desde otro
- * hilo. Lo único que sale del EDT es escribir el archivo, que hace la {@link TareaGuardar}.
+ * hilo, y ahí se arma la {@link InstantaneaPartida} (la foto de la partida que se va a escribir).
+ * Lo único que sale del EDT es escribir esa foto en el archivo, que hace la {@link TareaGuardar}.
  */
 public final class AccionGuardarPartida implements Runnable {
 
@@ -187,11 +189,17 @@ public final class AccionGuardarPartida implements Runnable {
     }
 
     /**
-     * Bloquea (alEmpezar) y lanza la {@link TareaGuardar}. Desde acá el trabajo sigue en otro hilo
-     * y el resultado vuelve al EDT.
+     * Arma la instantánea, bloquea (alEmpezar) y lanza la {@link TareaGuardar}. Desde acá el
+     * trabajo sigue en otro hilo y el resultado vuelve al EDT.
+     * <p>
+     * La instantánea se arma <b>acá, en el EDT</b>, y no dentro del hilo: el EDT es el único que
+     * modifica la partida (cada clic en el tablero corre en él), así que mientras se copia nadie la
+     * está cambiando. Al hilo le llega solo la copia; si el jugador sigue jugando mientras se
+     * escribe el archivo, no hay dos hilos tocando la misma partida.
      */
     private void lanzarTarea(GestorPartida partida, String nombre) {
-        TareaGuardar tarea = new TareaGuardar(repositorio, partida, nombre,
+        InstantaneaPartida instantanea = partida.crearInstantanea();
+        TareaGuardar tarea = new TareaGuardar(repositorio, instantanea, nombre,
                 guardado -> alAviso.accept("Partida guardada como \"" + guardado + "\"."),
                 alError, this::terminarGuardado, enElEdt);
         guardando = true;

@@ -44,7 +44,7 @@ class GuardarYCargarEnHiloIntegracionTest {
         List<String> errores = new ArrayList<>();
         AtomicReference<String> guardado = new AtomicReference<>();
         CountDownLatch guardadoTermino = new CountDownLatch(1);
-        Thread hiloGuardar = new Thread(new TareaGuardar(repositorio, original, "integracion",
+        Thread hiloGuardar = new Thread(new TareaGuardar(repositorio, original.crearInstantanea(), "integracion",
                 guardado::set, errores::add, guardadoTermino::countDown));
         hiloGuardar.start();
         assertTrue(guardadoTermino.await(10, TimeUnit.SECONDS), "el guardado tendría que terminar");

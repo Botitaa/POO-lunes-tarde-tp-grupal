@@ -87,7 +87,7 @@ public class RepositorioPartidasArchivoGuardarTest {
         RepositorioPartidasArchivo repo = new RepositorioPartidasArchivo(tempDir);
         GestorPartida partida = crearPartidaEnJuegoValida();
 
-        repo.guardar(partida, "partida1");
+        repo.guardar(partida.crearInstantanea(), "partida1");
 
         Path archivo = tempDir.resolve("partida1.sav");
         assertTrue(Files.exists(archivo));
@@ -110,11 +110,11 @@ public class RepositorioPartidasArchivoGuardarTest {
         RepositorioPartidasArchivo repo = new RepositorioPartidasArchivo(tempDir);
         GestorPartida partida = crearPartidaEnJuegoValida();
 
-        assertThrows(PersistenciaException.class, () -> repo.guardar(partida, null));
-        assertThrows(PersistenciaException.class, () -> repo.guardar(partida, ""));
-        assertThrows(PersistenciaException.class, () -> repo.guardar(partida, "partida con espacios"));
-        assertThrows(PersistenciaException.class, () -> repo.guardar(partida, "partida;con;puntoycoma"));
-        assertThrows(PersistenciaException.class, () -> repo.guardar(partida, "a".repeat(41)));
+        assertThrows(PersistenciaException.class, () -> repo.guardar(partida.crearInstantanea(), null));
+        assertThrows(PersistenciaException.class, () -> repo.guardar(partida.crearInstantanea(), ""));
+        assertThrows(PersistenciaException.class, () -> repo.guardar(partida.crearInstantanea(), "partida con espacios"));
+        assertThrows(PersistenciaException.class, () -> repo.guardar(partida.crearInstantanea(), "partida;con;puntoycoma"));
+        assertThrows(PersistenciaException.class, () -> repo.guardar(partida.crearInstantanea(), "a".repeat(41)));
     }
 
     @Test
@@ -126,7 +126,8 @@ public class RepositorioPartidasArchivoGuardarTest {
         Jugador j2 = new Jugador(2, "J2", f2);
         GestorPartida partidaDespliegue = new GestorPartida(j1, j2, Tablero.crearMapaEstandar());
 
-        assertThrows(PersistenciaException.class, () -> repo.guardar(partidaDespliegue, "partida1"));
+        assertThrows(PersistenciaException.class, () -> repo.guardar(partidaDespliegue.crearInstantanea(), "partida1"));
+        assertThrows(PersistenciaException.class, () -> repo.guardar(null, "partida1"));
     }
 
     @Test
@@ -173,7 +174,7 @@ public class RepositorioPartidasArchivoGuardarTest {
         );
 
         GestorPartida partida = GestorPartida.restaurar(instantanea, tablero);
-        repo.guardar(partida, "partidaConSaltos");
+        repo.guardar(partida.crearInstantanea(), "partidaConSaltos");
 
         GestorPartida cargada = repo.cargar("partidaConSaltos");
         InstantaneaPartida instCargada = cargada.crearInstantanea();

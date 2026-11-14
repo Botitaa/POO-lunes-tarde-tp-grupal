@@ -17,8 +17,8 @@ import batallanaval.modelo.Tablero;
 
 /**
  * Prueba que {@link AccionGuardarPartida} guarda a través de una {@link TareaGuardar} lanzada en otro
- * hilo: bloquea al empezar, libera al terminar (salga bien o mal) y no deja lanzar dos guardados a la
- * vez. El "hilo" se reemplaza por un lanzador manual que guarda la tarea sin correrla, así el test
+ * hilo: arma la instantánea antes de lanzarlo, bloquea al empezar, libera al terminar (salga bien o
+ * mal) y no deja lanzar dos guardados a la vez. El "hilo" se reemplaza por un lanzador manual que guarda la tarea sin correrla, así el test
  * decide cuándo termina y no depende del reloj.
  */
 class AccionGuardarPartidaHiloTest {

@@ -1,6 +1,7 @@
 package batallanaval.persistencia;
 
 import batallanaval.controlador.GestorPartida;
+import batallanaval.controlador.InstantaneaPartida;
 import batallanaval.excepciones.PersistenciaException;
 import java.util.List;
 
@@ -10,13 +11,19 @@ import java.util.List;
 public interface RepositorioPartidas {
 
     /**
-     * Guarda el estado actual de una partida en disco asignándole un nombre.
+     * Guarda en disco una foto de la partida asignándole un nombre.
+     * <p>
+     * Recibe la {@link InstantaneaPartida} y no el {@link GestorPartida} para poder escribir el
+     * archivo en un hilo aparte sin leer la partida mientras alguien la modifica: quien guarda arma
+     * la instantánea con {@code partida.crearInstantanea()} en el hilo de Swing (después de chequear
+     * {@code partida.puedeGuardarse()}) y al repositorio le llega solo esa copia.
      *
-     * @param partida instancia de la partida a persistir.
+     * @param instantanea foto de la partida a persistir (tiene que estar en {@code EN_JUEGO}).
      * @param nombre nombre identificatorio del archivo.
-     * @throws PersistenciaException si el nombre es inválido, la partida no puede guardarse o falla la escritura.
+     * @throws PersistenciaException si el nombre es inválido, la instantánea no es de una partida en
+     *                               juego o falla la escritura.
      */
-    void guardar(GestorPartida partida, String nombre) throws PersistenciaException;
+    void guardar(InstantaneaPartida instantanea, String nombre) throws PersistenciaException;
 
     /**
      * Carga y reconstruye una partida previamente guardada.
