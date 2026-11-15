@@ -54,6 +54,12 @@ Los barcos bloquean el paso, pero no la visión ni los disparos. Las distancias 
 - **Dominación:** al terminar tu turno sumás 1 punto si tenés al menos un barco en la zona de dominación y el rival ninguno. Con 6 puntos ganás y los puntos no se pierden.
 - **Límite:** 40 turnos por jugador. Gana quien tenga más puntos de dominación; si hay empate, más barcos vivos; si sigue el empate, más vida total.
 
+**Fin de la partida.** Cuando la partida termina aparece una pantalla con el ganador (o "Empate"), el motivo y las rondas jugadas. El resultado se suma a las estadísticas y el historial completo, ya sin niebla, se exporta a `datos/historiales/`. Desde esa pantalla podés:
+
+- **Ver historial:** despliega todas las acciones de los dos jugadores. Volvé a tocarlo para ocultarlo.
+- **Abrir historial exportado:** abre el `.txt` con el programa que tengas para esos archivos. Si no se pudo exportar, el botón queda deshabilitado.
+- **Volver al inicio:** regresa al menú principal.
+
 ## 3. Cómo se juega un turno
 
 Cada turno tenés **6 puntos de movimiento** para toda la flota (no se acumulan). Podés activar tus barcos de a uno, en el orden que quieras: **primero mover y después disparar** (las dos cosas son opcionales). Un barco que disparó ya no puede moverse.
