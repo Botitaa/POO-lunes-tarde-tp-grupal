@@ -923,6 +923,9 @@ public class GestorPartida implements Partida {
 
 
     private boolean esBarcoVisibleParaJugador(Jugador observador, Barco barco) {
+        if (barco.getPosicion() == null) {
+            return false; // despliegue: un barco sin ubicar todavía no está en el mapa, nadie lo ve
+        }
         return barco.estaRevelado() || esVisibleParaJugador(observador, barco.getPosicion());
     }
 

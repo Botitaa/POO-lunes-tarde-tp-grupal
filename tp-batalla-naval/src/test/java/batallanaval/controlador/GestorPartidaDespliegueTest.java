@@ -45,6 +45,24 @@ class GestorPartidaDespliegueTest {
         }
     }
 
+    // ---------- visibilidad durante el despliegue ----------
+
+    @Test
+    void sinBarcosUbicadosElRivalNoTieneEnemigosVisiblesNiFallaLaConsulta() {
+        // El rival todavía no ubicó ninguno: sus barcos no tienen posición y no hay nada que ver.
+        assertDoesNotThrow(() -> partida.getBarcosEnemigosVisibles());
+        assertTrue(partida.getBarcosEnemigosVisibles().isEmpty());
+    }
+
+    @Test
+    void enElDespliegueDeJ2LosBarcosDeJ1NoSeVenDesdeLaZonaDeJ2() {
+        ubicarFlotaCompleta(1, 0);
+        partida.confirmarDespliegue();
+        partida.ubicarBarco(7, new Posicion(9, 0));
+
+        assertTrue(partida.getBarcosEnemigosVisibles().isEmpty());
+    }
+
     // ---------- ubicarBarco ----------
 
     @Test
