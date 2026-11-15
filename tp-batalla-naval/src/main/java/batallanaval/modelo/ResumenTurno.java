@@ -11,11 +11,16 @@ public class ResumenTurno {
 
     private final List<String> mensajes;
 
+    // Los mismos disparos con sus casillas, para que el tablero los pueda dibujar.
+    // No se guardan en el archivo: después de cargar una partida solo quedan los mensajes.
+    private final List<Disparo> disparosRecibidos;
+
     /**
      * Constructor por defecto que inicializa la lista de mensajes del turno.
      */
     public ResumenTurno() {
         this.mensajes = new ArrayList<>();
+        this.disparosRecibidos = new ArrayList<>();
     }
 
     /**
@@ -33,6 +38,7 @@ public class ResumenTurno {
                 danio,
                 origen.toString());
         mensajes.add(mensaje);
+        disparosRecibidos.add(new Disparo(origen, objetivo.getPosicion(), danio, false));
     }
 
     /**
@@ -46,6 +52,7 @@ public class ResumenTurno {
                 barco.getSimbolo(),
                 posicion.toString());
         mensajes.add(mensaje);
+        marcarUltimoDisparoComoHundimiento(posicion);
     }
 
     /**
@@ -62,6 +69,7 @@ public class ResumenTurno {
      */
     public void limpiar() {
         mensajes.clear();
+        disparosRecibidos.clear();
     }
 
     /**
@@ -81,6 +89,26 @@ public class ResumenTurno {
     public void agregarMensaje(String mensaje) {
         if (mensaje != null) {
             mensajes.add(mensaje);
+        }
+    }
+
+    /**
+     * Los disparos recibidos en el turno del rival, con sus casillas (para dibujarlos).
+     *
+     * @return copia inmutable, en el orden en que llegaron
+     */
+    public List<Disparo> getDisparosRecibidos() {
+        return List.copyOf(disparosRecibidos);
+    }
+
+    /** El último disparo que pegó en esa casilla pasa a ser un hundimiento. */
+    private void marcarUltimoDisparoComoHundimiento(Posicion posicion) {
+        for (int i = disparosRecibidos.size() - 1; i >= 0; i--) {
+            Disparo disparo = disparosRecibidos.get(i);
+            if (disparo.destino().equals(posicion)) {
+                disparosRecibidos.set(i, new Disparo(disparo.origen(), disparo.destino(), disparo.danio(), true));
+                return;
+            }
         }
     }
 }

@@ -63,6 +63,17 @@ class GestorPartidaDespliegueTest {
         assertTrue(partida.getBarcosEnemigosVisibles().isEmpty());
     }
 
+    @Test
+    void enElDespliegueDeJ2NoSeVenLosBarcosDeJ1AunqueEstenAlAlcanceDeLaVision() {
+        // J1 pone su flota en el borde de su zona (fila 2) y J2 su acorazado (visión 5) en el borde
+        // de la suya (fila 7): por distancia lo vería, pero en el despliegue no se ve nada del rival
+        ubicarFlotaCompleta(1, 2);
+        partida.confirmarDespliegue();
+        partida.ubicarBarco(7, new Posicion(7, 0));
+
+        assertTrue(partida.getBarcosEnemigosVisibles().isEmpty());
+    }
+
     // ---------- ubicarBarco ----------
 
     @Test
