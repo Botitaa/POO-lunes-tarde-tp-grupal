@@ -3,6 +3,7 @@ package batallanaval.modelo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -795,4 +796,81 @@ class TableroTest {
     }
 
 
+    // ---------- restos (convertirEnRestos y getRestos) ----------
+
+    @Test
+    void convertirEnRestosCambiaLaCasillaARestos() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        tablero.convertirEnRestos(new Posicion(4, 6));
+
+        assertSame(Casilla.RESTOS, tablero.getCasilla(new Posicion(4, 6)));
+    }
+
+    @Test
+    void convertirEnRestosFuncionaEnLasEsquinas() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        tablero.convertirEnRestos(new Posicion(0, 0));
+        tablero.convertirEnRestos(new Posicion(9, 9));
+
+        assertSame(Casilla.RESTOS, tablero.getCasilla(new Posicion(0, 0)));
+        assertSame(Casilla.RESTOS, tablero.getCasilla(new Posicion(9, 9)));
+    }
+
+    @Test
+    void convertirEnRestosFueraDelTableroLanzaExcepcion() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        assertThrows(IllegalArgumentException.class, () -> tablero.convertirEnRestos(new Posicion(10, 0)));
+        assertThrows(IllegalArgumentException.class, () -> tablero.convertirEnRestos(new Posicion(0, -1)));
+    }
+
+    @Test
+    void losRestosNoBloqueanNiElPasoNiLaVision() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        tablero.convertirEnRestos(new Posicion(5, 5));
+
+        assertTrue(tablero.esTransitable(new Posicion(5, 5)));
+        assertTrue(tablero.hayLineaDeVision(new Posicion(5, 2), new Posicion(5, 8)));
+    }
+
+    @Test
+    void unTableroNuevoNoTieneRestos() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        assertTrue(tablero.getRestos().isEmpty());
+    }
+
+    @Test
+    void getRestosDevuelveTodasLasPosicionesRecorriendoPorFilas() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        tablero.convertirEnRestos(new Posicion(9, 9));
+        tablero.convertirEnRestos(new Posicion(0, 3));
+        tablero.convertirEnRestos(new Posicion(4, 1));
+
+        assertEquals(List.of(new Posicion(0, 3), new Posicion(4, 1), new Posicion(9, 9)), tablero.getRestos());
+    }
+
+    @Test
+    void convertirDosVecesLaMismaCasillaNoDuplicaLosRestos() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        tablero.convertirEnRestos(new Posicion(2, 2));
+        tablero.convertirEnRestos(new Posicion(2, 2));
+
+        assertEquals(List.of(new Posicion(2, 2)), tablero.getRestos());
+    }
+
+    @Test
+    void laListaDeRestosNoSePuedeModificarDesdeAfuera() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        tablero.convertirEnRestos(new Posicion(1, 1));
+
+        List<Posicion> restos = tablero.getRestos();
+
+        assertThrows(UnsupportedOperationException.class, () -> restos.add(new Posicion(3, 3)));
+        assertEquals(1, tablero.getRestos().size());
+    }
 }

@@ -12,6 +12,7 @@ import batallanaval.modelo.FabricaFlota;
 import batallanaval.modelo.Jugador;
 import batallanaval.modelo.Tablero;
 import batallanaval.persistencia.CalculadoraRanking;
+import batallanaval.persistencia.ConfiguracionJuego;
 import batallanaval.persistencia.ExportadorHistorial;
 import batallanaval.persistencia.LectorMapas;
 import batallanaval.persistencia.RepositorioEstadisticas;
@@ -55,9 +56,13 @@ import java.util.Objects;
  * </pre>
  * Escucha a la partida como {@link ObservadorPartida}: cada {@code onTurnoIniciado} lleva al blackout
  * y {@code onPartidaTerminada} cierra la partida: registra el resultado en las estadísticas, exporta el
- * historial y muestra la pantalla de fin. Las pantallas que dependen de la partida (despliegue,
+ * historial y muestra la pantalla de fin. Además registra un {@link AutoGuardado} en cada partida, que
+ * guarda al empezar cada turno si la configuración lo permite. Las pantallas que dependen de la partida (despliegue,
  * resumen y juego) se vuelven a crear con cada partida nueva o cargada, dentro de un contenedor fijo,
  * porque {@link VentanaPrincipal} registra una sola vez cada pantalla.
+ * <p>
+ * La {@link ConfiguracionJuego} da la carpeta de partidas, si hay autoguardado y los últimos nombres
+ * usados, que se precargan en la pantalla de nueva partida y se actualizan al comenzar cada una.
  * <p>
  * Todos los métodos se llaman desde el EDT.
  */
@@ -70,6 +75,7 @@ public final class ControladorAplicacion implements ObservadorPartida {
     private final VentanaPrincipal ventana;
     private final RepositorioPartidas repositorioPartidas;
     private final RepositorioEstadisticas repositorioEstadisticas;
+    private final ConfiguracionJuego configuracion;
 
     private final BarraMenuJuego barraMenu;
     private final AccionGuardarPartida accionGuardar;
@@ -89,40 +95,40 @@ public final class ControladorAplicacion implements ObservadorPartida {
     private PanelJuego panelJuego;
     private PanelResumen panelResumen;
     private PanelDespliegue panelDespliegue;
-
-    /** Arma la aplicación con la ventana y los repositorios reales (archivos en {@code datos/}). */
-    public ControladorAplicacion() {
-        this(new VentanaPrincipal(), new RepositorioPartidasArchivo(), new RepositorioEstadisticasCsv());
-    }
+    private AutoGuardado autoGuardado;
 
     /**
-     * Arma la aplicación con lo que recibe; los historiales se exportan en {@link RutasApp#HISTORIALES}.
-     *
-     * @param ventana                 ventana única del juego
-     * @param repositorioPartidas     donde se guardan y cargan las partidas
-     * @param repositorioEstadisticas donde se registran los resultados para el ranking
-     * @throws NullPointerException si algún argumento es {@code null}
+     * Arma la aplicación real: lee {@code datos/config.properties} (o lo crea con los valores por
+     * defecto) y guarda las partidas en la carpeta que diga la configuración.
      */
-    ControladorAplicacion(VentanaPrincipal ventana, RepositorioPartidas repositorioPartidas,
-                          RepositorioEstadisticas repositorioEstadisticas) {
-        this(ventana, repositorioPartidas, repositorioEstadisticas, RutasApp.HISTORIALES);
+    public ControladorAplicacion() {
+        this(ConfiguracionJuego.cargar());
+    }
+
+    private ControladorAplicacion(ConfiguracionJuego configuracion) {
+        this(new VentanaPrincipal(), new RepositorioPartidasArchivo(configuracion.getCarpetaPartidas()),
+                new RepositorioEstadisticasCsv(), RutasApp.HISTORIALES, configuracion);
     }
 
     /**
      * Arma la aplicación con lo que recibe (inyección por constructor).
      *
      * @param ventana                 ventana única del juego
-     * @param repositorioPartidas     donde se guardan y cargan las partidas
+     * @param repositorioPartidas     donde se guardan y cargan las partidas (también el autoguardado)
      * @param repositorioEstadisticas donde se registran los resultados para el ranking
      * @param carpetaHistoriales      donde se exporta el historial al terminar cada partida (los
      *                                tests pasan una carpeta temporal)
+     * @param configuracion           nombres precargados, autoguardado sí/no (los tests pasan una
+     *                                cargada desde una carpeta temporal)
      * @throws NullPointerException si algún argumento es {@code null}
      */
     ControladorAplicacion(VentanaPrincipal ventana, RepositorioPartidas repositorioPartidas,
-                          RepositorioEstadisticas repositorioEstadisticas, Path carpetaHistoriales) {
+                          RepositorioEstadisticas repositorioEstadisticas, Path carpetaHistoriales,
+                          ConfiguracionJuego configuracion) {
         this.ventana = Objects.requireNonNull(ventana, "ventana");
         this.repositorioPartidas = Objects.requireNonNull(repositorioPartidas, "repositorioPartidas");
         this.repositorioEstadisticas = Objects.requireNonNull(repositorioEstadisticas, "repositorioEstadisticas");
+        this.configuracion = Objects.requireNonNull(configuracion, "configuracion");
 
         // Guardar corre en un hilo propio (TareaGuardar): mientras tanto se bloquean los botones del
         // blackout y se liberan al terminar, salga bien o mal.
@@ -132,8 +138,9 @@ public final class ControladorAplicacion implements ObservadorPartida {
         barraMenu = new BarraMenuJuego(accionGuardar, () -> ventana.mostrar(Pantalla.CARGAR),
                 this::abandonar, () -> ventana.mostrar(Pantalla.REGLAS));
         panelBlackout = new PanelBlackout(this::alTocarListo, accionGuardar);
-        // TEMPORAL (#73): los nombres van a salir de ConfiguracionJuego (los últimos que se usaron).
-        panelNuevaPartida = new PanelNuevaPartida(ventana, null, null, this::comenzarPartidaNueva);
+        // Se precargan los últimos nombres que se usaron (o los de por defecto).
+        panelNuevaPartida = new PanelNuevaPartida(ventana, configuracion.getUltimoJugador1(),
+                configuracion.getUltimoJugador2(), this::comenzarPartidaNueva);
         panelCargar = new PanelCargarPartida(ventana, repositorioPartidas, this::alCargarPartida);
         panelEstadisticas = new PanelEstadisticas(ventana);
         this.carpetaHistoriales = Objects.requireNonNull(carpetaHistoriales, "carpetaHistoriales");
@@ -164,13 +171,29 @@ public final class ControladorAplicacion implements ObservadorPartida {
 
     // ---------- partida nueva, cargada o abandonada ----------
 
-    private void comenzarPartidaNueva() {
+    /** Se llama al tocar "Comenzar" con nombres válidos (package-private para los tests). */
+    void comenzarPartidaNueva() {
+        recordarNombres(panelNuevaPartida.getNombreJugador1(), panelNuevaPartida.getNombreJugador2());
         GestorPartida nueva = new GestorPartida(
                 new Jugador(1, panelNuevaPartida.getNombreJugador1(), FabricaFlota.crearFlotaEstandar(PRIMER_ID_J1)),
                 new Jugador(2, panelNuevaPartida.getNombreJugador2(), FabricaFlota.crearFlotaEstandar(PRIMER_ID_J2)),
                 cargarMapa());
         instalarPartida(nueva);
         mostrarBlackout();
+    }
+
+    /**
+     * Guarda los nombres en la configuración para precargarlos la próxima vez. Si no se puede
+     * escribir el archivo se avisa y se juega igual.
+     */
+    private void recordarNombres(String nombreJugador1, String nombreJugador2) {
+        try {
+            configuracion.setUltimoJugador1(nombreJugador1);
+            configuracion.setUltimoJugador2(nombreJugador2);
+            configuracion.guardar();
+        } catch (PersistenciaException | IllegalArgumentException e) {
+            ventana.mostrarError("No se pudieron recordar los nombres: " + e.getMessage());
+        }
     }
 
     private Tablero cargarMapa() {
@@ -182,7 +205,8 @@ public final class ControladorAplicacion implements ObservadorPartida {
         }
     }
 
-    private void alCargarPartida(Partida cargada) {
+    /** Se llama al elegir una partida guardada (package-private para los tests). */
+    void alCargarPartida(Partida cargada) {
         if (!(cargada instanceof GestorPartida gestor)) {
             ventana.mostrarError("La partida cargada no se puede jugar.");
             return;
@@ -217,7 +241,8 @@ public final class ControladorAplicacion implements ObservadorPartida {
         nueva.agregarObservador(panelJuego);
         nueva.agregarObservador(panelDespliegue);
         nueva.agregarObservador(barraMenu);
-        // TEMPORAL (#80): nueva.agregarObservador(new AutoGuardado(...)) cuando Faccio lo suba.
+        autoGuardado = new AutoGuardado(nueva, repositorioPartidas, configuracion, ventana::mostrarError);
+        nueva.agregarObservador(autoGuardado);
         barraMenu.mostrarPartida(nueva);
     }
 
@@ -228,8 +253,10 @@ public final class ControladorAplicacion implements ObservadorPartida {
             partida.quitarObservador(panelJuego);
             partida.quitarObservador(panelDespliegue);
             partida.quitarObservador(barraMenu);
+            partida.quitarObservador(autoGuardado);
         }
         partida = null;
+        autoGuardado = null;
         barraMenu.mostrarPartida(null);
     }
 
