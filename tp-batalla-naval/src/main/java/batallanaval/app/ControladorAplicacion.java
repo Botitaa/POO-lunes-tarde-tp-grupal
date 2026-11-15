@@ -6,20 +6,26 @@ import batallanaval.controlador.ObservadorPartida;
 import batallanaval.controlador.Partida;
 import batallanaval.controlador.ResultadoPartida;
 import batallanaval.excepciones.PersistenciaException;
+import batallanaval.historial.EventoPartida;
+import batallanaval.historial.HistorialPartida;
 import batallanaval.modelo.FabricaFlota;
 import batallanaval.modelo.Jugador;
 import batallanaval.modelo.Tablero;
 import batallanaval.persistencia.CalculadoraRanking;
+import batallanaval.persistencia.ExportadorHistorial;
 import batallanaval.persistencia.LectorMapas;
 import batallanaval.persistencia.RepositorioEstadisticas;
 import batallanaval.persistencia.RepositorioEstadisticasCsv;
 import batallanaval.persistencia.RepositorioPartidas;
 import batallanaval.persistencia.RepositorioPartidasArchivo;
+import batallanaval.persistencia.RutasApp;
 import batallanaval.vista.AccionGuardarPartida;
 import batallanaval.vista.BarraMenuJuego;
 import batallanaval.vista.PanelBlackout;
 import batallanaval.vista.PanelCargarPartida;
+import batallanaval.vista.PanelDespliegue;
 import batallanaval.vista.PanelEstadisticas;
+import batallanaval.vista.PanelFinPartida;
 import batallanaval.vista.PanelInicio;
 import batallanaval.vista.PanelJuego;
 import batallanaval.vista.PanelNuevaPartida;
@@ -28,12 +34,13 @@ import batallanaval.vista.PanelResumen;
 import batallanaval.vista.Pantalla;
 import batallanaval.vista.VentanaPrincipal;
 
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -44,10 +51,11 @@ import java.util.Objects;
  * Flujo de una partida (hot-seat):
  * <pre>
  * INICIO → NUEVA_PARTIDA → BLACKOUT → DESPLIEGUE (J1) → BLACKOUT → DESPLIEGUE (J2)
- *        → BLACKOUT → [RESUMEN] → JUEGO → BLACKOUT → [RESUMEN] → JUEGO → … → fin → INICIO
+ *        → BLACKOUT → [RESUMEN] → JUEGO → BLACKOUT → [RESUMEN] → JUEGO → … → FIN_PARTIDA → INICIO
  * </pre>
  * Escucha a la partida como {@link ObservadorPartida}: cada {@code onTurnoIniciado} lleva al blackout
- * y {@code onPartidaTerminada} cierra la partida. Las pantallas que dependen de la partida (despliegue,
+ * y {@code onPartidaTerminada} cierra la partida: registra el resultado en las estadísticas, exporta el
+ * historial y muestra la pantalla de fin. Las pantallas que dependen de la partida (despliegue,
  * resumen y juego) se vuelven a crear con cada partida nueva o cargada, dentro de un contenedor fijo,
  * porque {@link VentanaPrincipal} registra una sola vez cada pantalla.
  * <p>
@@ -69,6 +77,8 @@ public final class ControladorAplicacion implements ObservadorPartida {
     private final PanelNuevaPartida panelNuevaPartida;
     private final PanelCargarPartida panelCargar;
     private final PanelEstadisticas panelEstadisticas;
+    private final PanelFinPartida panelFinPartida;
+    private final Path carpetaHistoriales;
 
     // Contenedores fijos de las pantallas que se rearman con cada partida.
     private final JPanel contenedorDespliegue = new JPanel(new BorderLayout());
@@ -78,7 +88,7 @@ public final class ControladorAplicacion implements ObservadorPartida {
     private GestorPartida partida;
     private PanelJuego panelJuego;
     private PanelResumen panelResumen;
-    private PanelDespliegueTemporal panelDespliegue;
+    private PanelDespliegue panelDespliegue;
 
     /** Arma la aplicación con la ventana y los repositorios reales (archivos en {@code datos/}). */
     public ControladorAplicacion() {
@@ -86,7 +96,7 @@ public final class ControladorAplicacion implements ObservadorPartida {
     }
 
     /**
-     * Arma la aplicación con lo que recibe (inyección por constructor).
+     * Arma la aplicación con lo que recibe; los historiales se exportan en {@link RutasApp#HISTORIALES}.
      *
      * @param ventana                 ventana única del juego
      * @param repositorioPartidas     donde se guardan y cargan las partidas
@@ -95,12 +105,30 @@ public final class ControladorAplicacion implements ObservadorPartida {
      */
     ControladorAplicacion(VentanaPrincipal ventana, RepositorioPartidas repositorioPartidas,
                           RepositorioEstadisticas repositorioEstadisticas) {
+        this(ventana, repositorioPartidas, repositorioEstadisticas, RutasApp.HISTORIALES);
+    }
+
+    /**
+     * Arma la aplicación con lo que recibe (inyección por constructor).
+     *
+     * @param ventana                 ventana única del juego
+     * @param repositorioPartidas     donde se guardan y cargan las partidas
+     * @param repositorioEstadisticas donde se registran los resultados para el ranking
+     * @param carpetaHistoriales      donde se exporta el historial al terminar cada partida (los
+     *                                tests pasan una carpeta temporal)
+     * @throws NullPointerException si algún argumento es {@code null}
+     */
+    ControladorAplicacion(VentanaPrincipal ventana, RepositorioPartidas repositorioPartidas,
+                          RepositorioEstadisticas repositorioEstadisticas, Path carpetaHistoriales) {
         this.ventana = Objects.requireNonNull(ventana, "ventana");
         this.repositorioPartidas = Objects.requireNonNull(repositorioPartidas, "repositorioPartidas");
         this.repositorioEstadisticas = Objects.requireNonNull(repositorioEstadisticas, "repositorioEstadisticas");
 
+        // Guardar corre en un hilo propio (TareaGuardar): mientras tanto se bloquean los botones del
+        // blackout y se liberan al terminar, salga bien o mal.
         accionGuardar = new AccionGuardarPartida(repositorioPartidas, () -> partida,
-                ventana::mostrarError, ventana::mostrarMensaje);
+                ventana::mostrarError, ventana::mostrarMensaje,
+                this::bloquearBotonesDelBlackout, this::liberarBotonesDelBlackout);
         barraMenu = new BarraMenuJuego(accionGuardar, () -> ventana.mostrar(Pantalla.CARGAR),
                 this::abandonar, () -> ventana.mostrar(Pantalla.REGLAS));
         panelBlackout = new PanelBlackout(this::alTocarListo, accionGuardar);
@@ -108,6 +136,8 @@ public final class ControladorAplicacion implements ObservadorPartida {
         panelNuevaPartida = new PanelNuevaPartida(ventana, null, null, this::comenzarPartidaNueva);
         panelCargar = new PanelCargarPartida(ventana, repositorioPartidas, this::alCargarPartida);
         panelEstadisticas = new PanelEstadisticas(ventana);
+        this.carpetaHistoriales = Objects.requireNonNull(carpetaHistoriales, "carpetaHistoriales");
+        panelFinPartida = new PanelFinPartida(() -> ventana.mostrar(Pantalla.INICIO), ventana::mostrarError);
     }
 
     /** Registra las pantallas, instala el menú y muestra la ventana en el inicio. */
@@ -121,7 +151,7 @@ public final class ControladorAplicacion implements ObservadorPartida {
         ventana.agregarPantalla(Pantalla.DESPLIEGUE, contenedorDespliegue);
         ventana.agregarPantalla(Pantalla.RESUMEN, contenedorResumen);
         ventana.agregarPantalla(Pantalla.JUEGO, contenedorJuego);
-        // TEMPORAL (#106): registrar Pantalla.FIN_PARTIDA con el PanelFinPartida de Guille.
+        ventana.agregarPantalla(Pantalla.FIN_PARTIDA, panelFinPartida);
 
         // PanelInicio navega solo; estas dos pantallas se recargan cada vez que se muestran.
         alMostrar(panelCargar, panelCargar::actualizarLista);
@@ -178,13 +208,14 @@ public final class ControladorAplicacion implements ObservadorPartida {
 
         panelJuego = new PanelJuego(nueva, ventana::mostrarError);
         panelResumen = new PanelResumen(nueva, () -> ventana.mostrar(Pantalla.JUEGO));
-        panelDespliegue = new PanelDespliegueTemporal(nueva, ventana::mostrarError);
+        panelDespliegue = new PanelDespliegue(nueva, ventana::mostrarError);
         reemplazar(contenedorJuego, panelJuego);
         reemplazar(contenedorResumen, panelResumen);
         reemplazar(contenedorDespliegue, panelDespliegue);
 
         nueva.agregarObservador(this);
         nueva.agregarObservador(panelJuego);
+        nueva.agregarObservador(panelDespliegue);
         nueva.agregarObservador(barraMenu);
         // TEMPORAL (#80): nueva.agregarObservador(new AutoGuardado(...)) cuando Faccio lo suba.
         barraMenu.mostrarPartida(nueva);
@@ -195,10 +226,23 @@ public final class ControladorAplicacion implements ObservadorPartida {
         if (partida != null) {
             partida.quitarObservador(this);
             partida.quitarObservador(panelJuego);
+            partida.quitarObservador(panelDespliegue);
             partida.quitarObservador(barraMenu);
         }
         partida = null;
         barraMenu.mostrarPartida(null);
+    }
+
+    // ---------- guardado en un hilo propio ----------
+
+    /** Se ejecuta en el EDT justo antes de lanzar el hilo que guarda: no se puede tocar nada mientras tanto. */
+    private void bloquearBotonesDelBlackout() {
+        panelBlackout.setBotonesHabilitados(false);
+    }
+
+    /** Se ejecuta en el EDT cuando el hilo que guarda terminó (bien o mal). */
+    private void liberarBotonesDelBlackout() {
+        panelBlackout.setBotonesHabilitados(true);
     }
 
     // ---------- cambio de pantallas durante la partida ----------
@@ -232,23 +276,49 @@ public final class ControladorAplicacion implements ObservadorPartida {
         }
     }
 
+    /**
+     * Cierra la partida terminada: registra el resultado en las estadísticas, exporta el historial
+     * completo y muestra la pantalla de fin. Si falla algo de archivos, el jugador ve el aviso pero
+     * llega igual a la pantalla de fin.
+     */
     private void terminarPartida(ResultadoPartida resultado) {
+        // El historial completo sale de la instantánea: es una copia, y GestorPartida no expone su
+        // HistorialPartida. La partida ya terminó, así que se ven las acciones de los dos jugadores.
+        List<EventoPartida> eventos = partida == null ? List.of() : partida.crearInstantanea().eventos();
+
+        String errorEstadisticas = null;
         try {
             repositorioEstadisticas.registrar(resultado);
         } catch (PersistenciaException e) {
-            ventana.mostrarError("No se pudo guardar el resultado en las estadísticas: " + e.getMessage());
+            errorEstadisticas = "No se pudo guardar el resultado en las estadísticas: " + e.getMessage();
         }
-        // TEMPORAL (#74): ExportadorHistorial.exportar(historial, resultado, RutasApp.HISTORIALES).
-        // TEMPORAL (#106): mostrar PanelFinPartida en lugar del cartel.
-        JOptionPane.showMessageDialog(ventana, textoResultado(resultado), "Fin de la partida",
-                JOptionPane.INFORMATION_MESSAGE);
+        Path exportado = exportarHistorial(eventos, resultado, carpetaHistoriales);
+
         soltarPartida();
-        ventana.mostrar(Pantalla.INICIO);
+        panelFinPartida.mostrarResultado(resultado, eventos, exportado);
+        ventana.mostrar(Pantalla.FIN_PARTIDA);
+        // Después de mostrar: cambiar de pantalla limpia la barra de estado
+        if (errorEstadisticas != null) {
+            ventana.mostrarError(errorEstadisticas);
+        }
     }
 
-    static String textoResultado(ResultadoPartida resultado) {
-        String quien = resultado.esEmpate() ? "Empate" : "Ganó " + resultado.ganador();
-        return quien + " (" + resultado.motivo() + ") en " + resultado.rondas() + " rondas.";
+    /**
+     * Escribe el historial completo en un {@code .txt} dentro de {@code carpeta}.
+     *
+     * @return la ruta del archivo creado, o {@code null} si no se pudo escribir (la pantalla de
+     *         fin avisa que no hay historial exportado)
+     */
+    static Path exportarHistorial(List<EventoPartida> eventos, ResultadoPartida resultado, Path carpeta) {
+        HistorialPartida historial = new HistorialPartida();
+        for (EventoPartida evento : eventos) {
+            historial.registrar(evento);
+        }
+        try {
+            return ExportadorHistorial.exportar(historial, resultado, carpeta);
+        } catch (PersistenciaException e) {
+            return null;
+        }
     }
 
     // ---------- avisos de la partida (ObservadorPartida) ----------
@@ -278,7 +348,8 @@ public final class ControladorAplicacion implements ObservadorPartida {
     }
 
     /**
-     * Terminó la partida: se registra el resultado y se vuelve al inicio.
+     * Terminó la partida: se registra el resultado, se exporta el historial y se muestra la
+     * pantalla de fin.
      *
      * @param resultado cómo terminó
      */

@@ -2,7 +2,6 @@ package batallanaval.vista;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -57,7 +56,8 @@ class AccionGuardarPartidaTest {
         crearAccion().run();
 
         assertEquals(List.of("mi-partida_2"), repositorio.nombresGuardados, "el nombre se guarda sin espacios sobrantes");
-        assertSame(partida, repositorio.ultimaPartidaGuardada);
+        assertEquals(partida.crearInstantanea(), repositorio.ultimaInstantaneaGuardada,
+                "al repositorio le llega la foto de la partida, no la partida");
         assertEquals(List.of("Partida guardada como \"mi-partida_2\"."), avisos);
         assertTrue(errores.isEmpty());
     }

@@ -89,21 +89,25 @@ public class RepositorioPartidasArchivo implements RepositorioPartidas {
     }
 
     /**
-     * Guarda el estado actual de la partida en un archivo .sav de texto plano.
+     * Escribe la instantánea de la partida en un archivo .sav de texto plano.
+     * <p>
+     * Solo lee la instantánea (una copia inmutable), nunca la partida: por eso se puede llamar
+     * desde un hilo aparte. Que la partida esté en un momento guardable ({@code puedeGuardarse()})
+     * lo chequea quien arma la instantánea; acá se rechaza lo que se ve en la propia instantánea:
+     * una partida que no está en juego (despliegue o terminada).
      *
-     * @param partida partida en juego a guardar.
+     * @param instantanea foto de la partida en juego a guardar.
      * @param nombre nombre del archivo de guardado (sin extensión .sav).
-     * @throws PersistenciaException si el nombre es inválido, la partida no puede guardarse o falla la escritura.
+     * @throws PersistenciaException si el nombre es inválido, la instantánea no es de una partida
+     *                               en juego o falla la escritura.
      */
     @Override
-    public void guardar(GestorPartida partida, String nombre) throws PersistenciaException {
+    public void guardar(InstantaneaPartida instantanea, String nombre) throws PersistenciaException {
         validarNombre(nombre);
 
-        if (partida == null || !partida.puedeGuardarse()) {
+        if (instantanea == null || instantanea.fase() != FasePartida.EN_JUEGO) {
             throw new PersistenciaException("La partida no se puede guardar en su estado actual.");
         }
-
-        InstantaneaPartida instantanea = partida.crearInstantanea();
 
         try {
             Files.createDirectories(carpeta);

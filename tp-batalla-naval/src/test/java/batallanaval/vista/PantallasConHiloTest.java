@@ -30,6 +30,7 @@ class PantallasConHiloTest {
     private PanelReglas reglas;
     private PanelBlackout blackout;
     private PanelResumen resumen;
+    private PanelFinPartida finPartida;
 
     @BeforeEach
     void armarPantallas() throws Exception {
@@ -41,6 +42,7 @@ class PantallasConHiloTest {
             reglas = new PanelReglas(ventana);
             blackout = new PanelBlackout(() -> { }, () -> { });
             resumen = new PanelResumen(new PartidaFalsa(), () -> { });
+            finPartida = new PanelFinPartida(() -> { }, mensaje -> { });
         });
     }
 
@@ -126,7 +128,7 @@ class PantallasConHiloTest {
     // Ayudas
 
     private List<PanelConHilo> pantallas() {
-        return List.of(nuevaPartida, estadisticas, reglas, blackout, resumen);
+        return List.of(nuevaPartida, estadisticas, reglas, blackout, resumen, finPartida);
     }
 
     /** Espera, con un límite de 2 segundos, a que se cumpla la condición. */

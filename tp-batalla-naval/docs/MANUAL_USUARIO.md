@@ -9,7 +9,12 @@ Juego por turnos para **dos jugadores en la misma computadora**. Cada uno comand
 1. En el menú de inicio tocá **Nueva partida**.
 2. Escribí el nombre de cada jugador. Tienen que ser **distintos**, no pueden estar vacíos ni tener el carácter `;`. Con **Sortear quién es J1** se elige al azar quién juega primero.
 3. Tocá **Comenzar** (o apretá Enter en un campo de nombre).
-4. **Despliegue:** cada jugador ubica sus 6 barcos (1 Acorazado, 2 Cruceros, 3 Destructores, uno por casilla) en su zona y confirma. El Jugador 1 despliega en las filas 0 a 2 y el Jugador 2 en las filas 7 a 9. No se puede guardar durante el despliegue.
+4. **Despliegue:** antes de cada despliegue aparece el blackout ("Turno de X") y el jugador toca **Listo**. Cada jugador ubica sus 6 barcos (1 Acorazado, 2 Cruceros, 3 Destructores, uno por casilla):
+   - Elegí un barco de la lista **Barcos sin ubicar** y hacé clic en una casilla de tu zona. El Jugador 1 despliega en las filas 0 a 2 (las 3 de arriba) y el Jugador 2 en las filas 7 a 9 (las 3 de abajo). Después de ubicar uno, queda elegido el siguiente.
+   - Para cambiar de lugar un barco ya ubicado, hacé clic sobre él y después en otra casilla. **Retirar barco** lo devuelve a la lista.
+   - Cuando están los 6 en el mapa se habilita **Confirmar despliegue**. Al confirmar, la computadora pasa al otro jugador.
+
+   No se puede guardar durante el despliegue.
 
 Otras opciones del menú de inicio: **Cargar partida**, **Estadísticas** (ranking de jugadores), **Reglas** y **Salir**.
 
@@ -48,6 +53,12 @@ Los barcos bloquean el paso, pero no la visión ni los disparos. Las distancias 
 - **Hundimiento:** hundir los 6 barcos rivales. La partida termina en el acto.
 - **Dominación:** al terminar tu turno sumás 1 punto si tenés al menos un barco en la zona de dominación y el rival ninguno. Con 6 puntos ganás y los puntos no se pierden.
 - **Límite:** 40 turnos por jugador. Gana quien tenga más puntos de dominación; si hay empate, más barcos vivos; si sigue el empate, más vida total.
+
+**Fin de la partida.** Cuando la partida termina aparece una pantalla con el ganador (o "Empate"), el motivo y las rondas jugadas. El resultado se suma a las estadísticas y el historial completo, ya sin niebla, se exporta a `datos/historiales/`. Desde esa pantalla podés:
+
+- **Ver historial:** despliega todas las acciones de los dos jugadores. Volvé a tocarlo para ocultarlo.
+- **Abrir historial exportado:** abre el `.txt` con el programa que tengas para esos archivos. Si no se pudo exportar, el botón queda deshabilitado.
+- **Volver al inicio:** regresa al menú principal.
 
 ## 3. Cómo se juega un turno
 
@@ -130,6 +141,7 @@ Los avisos y errores aparecen en la **barra de estado**, abajo de la ventana, y 
 | Mensaje | Qué hacer |
 | --- | --- |
 | "Los dos jugadores tienen que tener nombres distintos" | Cambiá uno de los nombres |
+| "Solo podés ubicar barcos en tu zona de despliegue" | Hacé clic dentro de las 3 filas que te corresponden |
 | "La partida solo se puede guardar al inicio de un turno o en la pantalla de blackout" | Terminá el turno y guardá en el blackout, o cancelá la ruta y guardá |
 | "Nombre de partida invalido" | Usá solo letras, números, `-` y `_` |
 | Un mensaje sobre un archivo (no existe, formato inválido, error al escribir) | Elegí otra partida o revisá que la carpeta `datos/` se pueda escribir |
