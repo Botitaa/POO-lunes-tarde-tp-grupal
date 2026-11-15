@@ -65,6 +65,37 @@ class AutoGuardadoTest {
     }
 
     @Test
+    void alTerminarLaPartidaBorraElAutoguardado(@TempDir Path tempDir) {
+        GestorPartida partida = crearPartidaEnJuego();
+        RepositorioPartidasArchivo repositorio = new RepositorioPartidasArchivo(tempDir);
+        ConfiguracionJuego config = ConfiguracionJuego.cargar(tempDir.resolve("config.properties"));
+        config.setAutoguardado(true);
+        List<String> errores = new ArrayList<>();
+        AutoGuardado autoGuardado = new AutoGuardado(partida, repositorio, config, errores::add);
+        partida.agregarObservador(autoGuardado);
+        partida.terminarTurno();
+        assertTrue(repositorio.existe(AutoGuardado.NOMBRE_ARCHIVO));
+
+        autoGuardado.onPartidaTerminada(null);
+
+        assertFalse(repositorio.existe(AutoGuardado.NOMBRE_ARCHIVO), "no queda un autoguardado de una partida terminada");
+        assertTrue(errores.isEmpty());
+    }
+
+    @Test
+    void alTerminarSinAutoguardadoNoHaceNada(@TempDir Path tempDir) {
+        GestorPartida partida = crearPartidaEnJuego();
+        RepositorioPartidasArchivo repositorio = new RepositorioPartidasArchivo(tempDir);
+        ConfiguracionJuego config = ConfiguracionJuego.cargar(tempDir.resolve("config.properties"));
+        List<String> errores = new ArrayList<>();
+        AutoGuardado autoGuardado = new AutoGuardado(partida, repositorio, config, errores::add);
+
+        autoGuardado.onPartidaTerminada(null);
+
+        assertTrue(errores.isEmpty());
+    }
+
+    @Test
     void noGuardaSiConfigLoDeshabilita(@TempDir Path tempDir) {
         GestorPartida partida = crearPartidaEnJuego();
         RepositorioPartidasArchivo repositorio = new RepositorioPartidasArchivo(tempDir);
