@@ -80,11 +80,21 @@ public class AutoGuardado implements ObservadorPartida {
     }
 
     /**
-     * Se invoca cuando termina la partida. No realiza acciones.
+     * Cuando termina la partida se borra el autoguardado: si no, quedaría guardado el inicio del
+     * último turno y al cargarlo se podría volver a jugar (y sumar dos veces el resultado a las
+     * estadísticas). Si no se puede borrar, se avisa en la barra de estado.
      *
      * @param resultadoPartida resultado final de la partida.
      */
     @Override
     public void onPartidaTerminada(ResultadoPartida resultadoPartida) {
+        if (!repositorio.existe(NOMBRE_ARCHIVO)) {
+            return;
+        }
+        try {
+            repositorio.borrar(NOMBRE_ARCHIVO);
+        } catch (PersistenciaException e) {
+            alError.accept(e.getMessage());
+        }
     }
 }

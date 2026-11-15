@@ -18,7 +18,7 @@ public abstract class Barco {
     private boolean habilidadActiva;
     private boolean revelado;
 
-  
+
     protected Barco(int id, EstadisticasBarco estadisticas, Posicion posicion) {
         this.id = id;
         this.estadisticas = estadisticas;
@@ -32,7 +32,7 @@ public abstract class Barco {
         this.revelado = false;
     }
 
-    
+
     protected Barco(int id, EstadisticasBarco estadisticas) {
         this(id, estadisticas, null);
     }
@@ -48,7 +48,7 @@ public abstract class Barco {
         }
     }
 
-   
+
     public void curar(int cantidad) {
         if (cantidad < 0) {
             throw new IllegalArgumentException("La curacion no puede ser negativa.");
@@ -61,17 +61,17 @@ public abstract class Barco {
         }
     }
 
-  
+
     public boolean estaHundido() {
         return this.vida <= 0;
     }
 
-    
+
     public int getDanio() {
         return estadisticas.danio();
     }
 
-   
+
     public int getRangoDisparo() {
         return estadisticas.rangoDisparo();
     }
@@ -181,7 +181,9 @@ public abstract class Barco {
      * decrementa cooldowns pendientes, rehabilita el movimiento y desactiva la habilidad temporal.
      */
     public void reiniciarTurno() {
-        if (cooldownDisparo > 0) {
+        // Si disparó en el turno que termina, la espera empieza a contar desde el turno siguiente:
+        // así el acorazado ("espera 1 turno") saltea de verdad un turno sin disparar.
+        if (cooldownDisparo > 0 && !yaDisparo) {
             cooldownDisparo--;
         }
         if (cooldownHabilidad > 0) {

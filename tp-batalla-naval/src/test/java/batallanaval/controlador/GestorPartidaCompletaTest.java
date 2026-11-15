@@ -183,7 +183,7 @@ class GestorPartidaCompletaTest {
         assertEquals(FasePartida.TERMINADA, partida.getFase());
         assertEquals("Ana", partida.getResultado().ganador());
         assertEquals(MotivoFin.HUNDIMIENTO, partida.getResultado().motivo());
-        assertEquals(5, partida.getResultado().rondas());
+        assertEquals(8, partida.getResultado().rondas()); // el acorazado espera un turno entre disparos
         assertEquals(0, partida.getRival().barcosVivos());
     }
 
