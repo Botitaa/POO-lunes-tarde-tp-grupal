@@ -1,0 +1,20 @@
+# Maven
+target/
+
+# IntelliJ (se comparte solo el estilo de código)
+.idea/*
+!.idea/codeStyles/
+*.iml
+out/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Datos que genera el juego al correr
+datos/
+*.log
+*.sav
+# ...salvo las partidas de prueba de la prueba manual guiada (docs/prueba-manual.md)
+!docs/prueba-manual/partidas/*.sav
+*.sav.tmp

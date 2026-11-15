@@ -1,0 +1,229 @@
+package batallanaval.modelo;
+
+import batallanaval.excepciones.MapaInvalidoException;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Tablero {
+    public static final int FILAS = 10;
+    public static final int COLUMNAS = 10;
+    private final Casilla[][] grilla;
+
+    private static final int ULTIMA_FILA_DESPLIEGUE_J1 = 2;
+    private static final int PRIMERA_FILA_DESPLIEGUE_J2 = 7;
+    private static final int PRIMERA_FILA_DOMINACION = 4;
+    private static final int ULTIMA_FILA_DOMINACION = 5;
+    private static final int PRIMERA_COLUMNA_DOMINACION = 4;
+    private static final int ULTIMA_COLUMNA_DOMINACION = 5;
+
+    private static final String[] MAPA_ESTANDAR = {
+            "~~~~~~~~~~",//0
+            "~~~~~~~~~~",//1
+            "~~~~~~~~~~",//2 ultima fila de despliegue jugador 1
+            "~~II~~~P~~",//3
+            "~~I~~~P~~~",//4
+            "~~~P~~~I~~",//5
+            "~~P~~~II~~",//6
+            "~~~~~~~~~~",//7 primera fila de despliegue jugador 2
+            "~~~~~~~~~~",//8
+            "~~~~~~~~~~"//9
+    };
+    public Tablero(Casilla[][] grilla) {//constructor
+        validarMapa(grilla);//valido el mapa
+        this.grilla = new Casilla[FILAS][COLUMNAS];//copia defensiva
+        for (int fila = 0; fila < FILAS; fila++) {
+            for (int columna = 0; columna < COLUMNAS; columna++) {
+                this.grilla[fila][columna] = grilla[fila][columna];
+            }
+        }
+    }
+
+    public boolean estaDentro(int fila, int columna) {//verifica si la fila y columna estan dentro del tablero
+        return fila >= 0 && fila < FILAS && columna >= 0 && columna < COLUMNAS;
+    }
+
+    public boolean estaDentro(Posicion posicion) {//verifica si la posicion esta dentro del tablero
+        return estaDentro(posicion.getFila(), posicion.getColumna());
+    }
+
+    //devuelve la casilla en la posicion (fila, columna) si esta dentro del tablero, sino lanza una excepcion
+    public Casilla getCasilla(int fila, int columna) {
+        if (!estaDentro(fila, columna)) {
+            throw new IllegalArgumentException("La posición (" + fila + "," + columna + ") está fuera del tablero");
+        }
+        return grilla[fila][columna];
+    }
+
+    public Casilla getCasilla(Posicion pos) {//devuelve la casilla en la posicion pos
+        return getCasilla(pos.getFila(), pos.getColumna());
+    }
+
+    public boolean esTransitable(Posicion pos) {//verifica si la posicion pos es transitable
+        if (!estaDentro(pos)) {
+            return false;
+        }
+        return !getCasilla(pos).bloqueaPaso();
+    }
+
+    private void validarMapa(Casilla[][] grilla) {
+        if (grilla == null) {
+            throw new MapaInvalidoException("La grilla no puede ser nula");
+        }
+        if (grilla.length != FILAS) {
+            throw new MapaInvalidoException("La grilla debe tener " + FILAS + " filas");
+        }
+        for (int fila = 0; fila < FILAS; fila++) {//recorro las filas de la grillla
+            if (grilla[fila] == null || grilla[fila].length != COLUMNAS) {
+                throw new MapaInvalidoException("La fila " + fila + "debe tener " + COLUMNAS + " columnas");
+            }
+            for (int columna = 0; columna < COLUMNAS; columna++) {//recorro las columnas de la grilla
+                Casilla casilla = grilla[fila][columna];
+                if (casilla == null) {
+                    throw new MapaInvalidoException("La casilla en la posición (" + fila + "," + columna + ") no puede ser nula");
+                }
+                if (casilla.bloqueaPaso() && esFilaDespliegue(fila)) {
+                    throw new MapaInvalidoException("Hay un obstáculo en la zona de despliegue. Posicion: " + fila + "," + columna);
+                }
+            }
+        }
+    }
+
+    private boolean esFilaDespliegue(int fila) {
+        return fila <= ULTIMA_FILA_DESPLIEGUE_J1 || fila >= PRIMERA_FILA_DESPLIEGUE_J2;
+    }
+//devuelve un tablero con el mapa estandar
+    public static Tablero crearMapaEstandar() {
+        Casilla[][] grilla = new Casilla[FILAS][COLUMNAS];
+        for (int fila = 0; fila < FILAS; fila++) {
+            String linea = MAPA_ESTANDAR[fila];//obtengo la linea correspondiente a la fila
+            for (int columna = 0; columna < COLUMNAS; columna++) {
+                grilla[fila][columna] = Casilla.desdeSimbolo(linea.charAt(columna));//charAt devuelve el caracter en la posicion columna de la linea,
+                                                                                    // y desdeSimbolo devuelve la casilla correspondiente al simbolo
+            }
+        }
+        return new Tablero(grilla);
+    }
+
+    public boolean esZonaDespliegue(Posicion pos, int numeroJugador) {
+        if (numeroJugador != 1 && numeroJugador != 2) {
+            throw new IllegalArgumentException("El número de jugador debe ser 1 o 2");
+        }
+        if (!estaDentro(pos)) {
+            return false;
+        }
+        if (numeroJugador == 1) {
+            return pos.getFila() <= ULTIMA_FILA_DESPLIEGUE_J1;
+        } else {
+            return pos.getFila() >= PRIMERA_FILA_DESPLIEGUE_J2;
+        }
+    }
+
+    public boolean esZonaDominacion(Posicion pos) {
+        return pos.getFila() >= PRIMERA_FILA_DOMINACION && pos.getFila() <= ULTIMA_FILA_DOMINACION &&
+               pos.getColumna() >= PRIMERA_COLUMNA_DOMINACION && pos.getColumna() <= ULTIMA_COLUMNA_DOMINACION;
+    }
+
+    public List<Posicion> getVecinos(Posicion pos) {
+        if (!estaDentro(pos)) {
+            throw new IllegalArgumentException("La posición " + pos + " está fuera del tablero");
+        }
+        List<Posicion> vecinos = new ArrayList<>();
+        for (int fila = pos.getFila() - 1; fila <= pos.getFila() + 1; fila++) {
+            for (int columna = pos.getColumna() - 1; columna <= pos.getColumna() + 1; columna++) {
+                Posicion vecina = new Posicion(fila, columna);
+                boolean esLaMismaPosicion = fila == pos.getFila() && columna == pos.getColumna();
+                if (!esLaMismaPosicion && esTransitable(vecina)) {
+                    vecinos.add(vecina);
+                }
+            }
+        }
+        return vecinos;
+    }
+    public boolean esDiagonalBloqueada(Posicion desde, Posicion hasta) {
+        if (!estaDentro(desde) || !estaDentro(hasta)) {
+            throw new IllegalArgumentException("Una de las posiciones está fuera del tablero");
+        }
+        if (desde.distanciaChebyshev(hasta) != 1) {
+            throw new IllegalArgumentException("Las posiciones" + desde + " y " + hasta + " no son adyacentes");
+        }
+        boolean esDiagonal = desde.getFila() != hasta.getFila() && desde.getColumna() != hasta.getColumna();
+        if (!esDiagonal) {
+            return false; }
+        Casilla esquina1 = getCasilla(desde.getFila(), hasta.getColumna());
+        Casilla esquina2 = getCasilla(hasta.getFila(), desde.getColumna());
+        return esquina1.bloqueaPaso() && esquina2.bloqueaPaso();
+    }
+    public boolean hayLineaDeVision(Posicion desde, Posicion hasta) {
+        if (!estaDentro(desde) || !estaDentro(hasta)) {
+            throw new IllegalArgumentException("Una de las posiciones está fuera del tablero");
+        }
+        return lineaLibre(desde, hasta) && lineaLibre(hasta, desde);
+    }
+    private boolean lineaLibre(Posicion desde, Posicion hasta) {
+        int fila = desde.getFila();
+        int columna = desde.getColumna();
+        int filaHasta = hasta.getFila();
+        int columnaHasta = hasta.getColumna();
+
+        int distanciaFilas = Math.abs(filaHasta - fila);
+        int distanciaColumnas = Math.abs(columnaHasta - columna);
+        int pasoFila;
+        if (fila < filaHasta) {
+            pasoFila = 1;
+        } else {
+            pasoFila = -1;
+        }
+        int pasoColumna;
+        if (columna < columnaHasta) {
+            pasoColumna = 1;
+        } else {
+            pasoColumna = -1;
+        }
+        int error = distanciaColumnas - distanciaFilas;
+
+        while (fila != filaHasta || columna != columnaHasta) {
+            int filaSiguiente = fila;
+            int columnaSiguiente = columna;
+            int doble = 2 * error;
+            if (doble > -distanciaFilas) {
+                error = error - distanciaFilas;
+                columnaSiguiente = columna + pasoColumna;
+            }
+            if (doble < distanciaColumnas) {
+                error = error + distanciaColumnas;
+                filaSiguiente = fila + pasoFila;
+            }
+            boolean pasoDiagonal = filaSiguiente != fila && columnaSiguiente != columna;
+            if (pasoDiagonal && getCasilla(fila, columnaSiguiente).bloqueaVision() && getCasilla(filaSiguiente, columna).bloqueaVision()){
+                return false;}
+
+            fila = filaSiguiente;
+            columna = columnaSiguiente;
+            boolean esElDestino = fila == filaHasta && columna == columnaHasta;
+            if(!esElDestino && getCasilla(fila, columnaSiguiente).bloqueaVision()){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void convertirEnRestos(Posicion pos) {
+        if (!estaDentro(pos)) {
+            throw new IllegalArgumentException("La posición está fuera del tablero");
+        }
+        grilla[pos.getFila()][pos.getColumna()] = Casilla.RESTOS;
+    }
+
+    public List<Posicion> getRestos() {
+        List<Posicion> restos = new ArrayList<>();
+        for (int fila = 0; fila < FILAS; fila++) {
+            for (int columna = 0; columna < COLUMNAS; columna++) {
+                if (grilla[fila][columna] == Casilla.RESTOS) {
+                    restos.add(new Posicion(fila, columna));
+                }
+            }
+        }
+        return List.copyOf(restos);
+    }
+}

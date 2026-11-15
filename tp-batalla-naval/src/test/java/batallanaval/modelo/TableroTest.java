@@ -1,0 +1,876 @@
+package batallanaval.modelo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import batallanaval.excepciones.MapaInvalidoException;
+import org.junit.jupiter.api.Test;
+import java.util.List;
+
+class TableroTest {
+
+    /** Crea una grilla de 10x10 llena de agua para usar en los tests. */
+    private Casilla[][] crearGrillaDeAgua() {
+        Casilla[][] grilla = new Casilla[Tablero.FILAS][Tablero.COLUMNAS];
+        for (int fila = 0; fila < Tablero.FILAS; fila++) {
+            for (int columna = 0; columna < Tablero.COLUMNAS; columna++) {
+                grilla[fila][columna] = Casilla.AGUA;
+            }
+        }
+        return grilla;
+    }
+
+    // ---------- constantes ----------
+
+    @Test
+    void elTableroEsDe10x10() {
+        assertEquals(10, Tablero.FILAS);
+        assertEquals(10, Tablero.COLUMNAS);
+    }
+
+    // ---------- constructor y copia defensiva ----------
+
+    @Test
+    void guardaLasCasillasDeLaGrilla() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[3][4] = Casilla.ISLA;
+        grilla[6][1] = Casilla.PIEDRA;
+
+        Tablero tablero = new Tablero(grilla);
+
+        assertSame(Casilla.ISLA, tablero.getCasilla(3, 4));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(6, 1));
+        assertSame(Casilla.AGUA, tablero.getCasilla(0, 0));
+    }
+
+    @Test
+    void cambiarLaGrillaOriginalNoCambiaElTablero() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        Tablero tablero = new Tablero(grilla);
+
+        grilla[5][5] = Casilla.ISLA;
+
+        assertSame(Casilla.AGUA, tablero.getCasilla(5, 5));
+    }
+
+    @Test
+    void grillaNullLanzaExcepcion() {
+        try {
+            new Tablero(null);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void grillaConMenosFilasLanzaExcepcion() {
+        try {
+            new Tablero(new Casilla[9][10]);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void filaConMasColumnasLanzaExcepcion() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[2] = new Casilla[11];
+        try {
+            new Tablero(grilla);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void casillaNullLanzaExcepcion() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[7][8] = null;
+        try {
+            new Tablero(grilla);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            assertTrue(e.getMessage().contains("(7,8)"));
+        }
+
+    }  @Test
+    void filaNullLanzaExcepcion() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[2] = null;
+        try {
+            new Tablero(grilla);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
+        }
+    }
+
+    // ---------- estaDentro (sobrecarga) ----------
+
+    @Test
+    void lasEsquinasEstanDentro() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.estaDentro(0, 0));
+        assertTrue(tablero.estaDentro(0, 9));
+        assertTrue(tablero.estaDentro(9, 0));
+        assertTrue(tablero.estaDentro(9, 9));
+    }
+
+    @Test
+    void justoAfueraDelBordeNoEstaDentro() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.estaDentro(-1, 5));
+        assertFalse(tablero.estaDentro(10, 5));
+        assertFalse(tablero.estaDentro(5, -1));
+        assertFalse(tablero.estaDentro(5, 10));
+    }
+
+    @Test
+    void estaDentroConPosicionDaLoMismoQueConFilaYColumna() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.estaDentro(new Posicion(4, 5)));
+        assertFalse(tablero.estaDentro(new Posicion(-1, 5)));
+        assertFalse(tablero.estaDentro(new Posicion(4, 10)));
+    }
+
+    // ---------- getCasilla (sobrecarga) ----------
+
+    @Test
+    void getCasillaConPosicionDaLoMismoQueConFilaYColumna() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][6] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+
+        assertSame(tablero.getCasilla(4, 6), tablero.getCasilla(new Posicion(4, 6)));
+    }
+
+    @Test
+    void getCasillaFueraDelTableroLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.getCasilla(10, 0);
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void getCasillaConPosicionFueraDelTableroLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.getCasilla(new Posicion(0, -1));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    // ---------- esTransitable ----------
+
+    @Test
+    void aguaYRestosSonTransitables() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[3][3] = Casilla.RESTOS;
+        Tablero tablero = new Tablero(grilla);
+
+        assertTrue(tablero.esTransitable(new Posicion(0, 0)));
+        assertTrue(tablero.esTransitable(new Posicion(3, 3)));
+    }
+
+    @Test
+    void piedraEIslaNoSonTransitables() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][2] = Casilla.PIEDRA;
+        grilla[5][7] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+
+        assertFalse(tablero.esTransitable(new Posicion(4, 2)));
+        assertFalse(tablero.esTransitable(new Posicion(5, 7)));
+    }
+
+    @Test
+    void fueraDelTableroNoEsTransitable() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esTransitable(new Posicion(-1, 0)));
+        assertFalse(tablero.esTransitable(new Posicion(0, 10)));
+    }
+    // ---------- validarMapa: zonas ----------
+
+    @Test
+    void obstaculosEnLaZonaNeutralSonValidos() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[3][0] = Casilla.ISLA;   // primera fila neutral
+        grilla[6][9] = Casilla.PIEDRA; // última fila neutral
+        Tablero tablero = new Tablero(grilla);
+
+        assertSame(Casilla.ISLA, tablero.getCasilla(3, 0));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(6, 9));
+    }
+
+    @Test
+    void islaEnLaZonaDelJugador1LanzaExcepcion() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[2][5] = Casilla.ISLA; // última fila de despliegue de J1
+        try {
+            new Tablero(grilla);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void piedraEnLaZonaDelJugador1LanzaExcepcion() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[0][0] = Casilla.PIEDRA;
+        try {
+            new Tablero(grilla);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void obstaculoEnLaZonaDelJugador2LanzaExcepcion() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[7][3] = Casilla.PIEDRA; // primera fila de despliegue de J2
+        try {
+            new Tablero(grilla);
+            fail("Debería haber lanzado MapaInvalidoException");
+        } catch (MapaInvalidoException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void restosEnLaZonaDeDespliegueNoSonObstaculo() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[1][1] = Casilla.RESTOS;
+        grilla[8][8] = Casilla.RESTOS;
+        Tablero tablero = new Tablero(grilla);
+
+        assertSame(Casilla.RESTOS, tablero.getCasilla(1, 1));
+    }
+    // ---------- crearMapaEstandar ----------
+
+    @Test
+    void elMapaEstandarSeCreaSinErrores() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        assertSame(Casilla.AGUA, tablero.getCasilla(0, 0));
+    }
+
+    @Test
+    void elMapaEstandarTieneLosObstaculosDelMvp() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        assertSame(Casilla.ISLA, tablero.getCasilla(3, 2));
+        assertSame(Casilla.ISLA, tablero.getCasilla(3, 3));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(3, 7));
+        assertSame(Casilla.ISLA, tablero.getCasilla(4, 2));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(4, 6));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(5, 3));
+        assertSame(Casilla.ISLA, tablero.getCasilla(5, 7));
+        assertSame(Casilla.PIEDRA, tablero.getCasilla(6, 2));
+        assertSame(Casilla.ISLA, tablero.getCasilla(6, 6));
+        assertSame(Casilla.ISLA, tablero.getCasilla(6, 7));
+    }
+
+    @Test
+    void elMapaEstandarTieneDiezObstaculos() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        int obstaculos = 0;
+        for (int fila = 0; fila < Tablero.FILAS; fila++) {
+            for (int columna = 0; columna < Tablero.COLUMNAS; columna++) {
+                if (tablero.getCasilla(fila, columna).bloqueaPaso()) {
+                    obstaculos++;
+                }
+            }
+        }
+        assertEquals(10, obstaculos);
+    }
+
+    @Test
+    void laZonaDeDominacionDelMapaEstandarEsAgua() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        assertSame(Casilla.AGUA, tablero.getCasilla(4, 4));
+        assertSame(Casilla.AGUA, tablero.getCasilla(4, 5));
+        assertSame(Casilla.AGUA, tablero.getCasilla(5, 4));
+        assertSame(Casilla.AGUA, tablero.getCasilla(5, 5));
+    }
+
+    @Test
+    void elMapaEstandarEsSimetricoRespectoDelCentro() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        for (int fila = 0; fila < Tablero.FILAS; fila++) {
+            for (int columna = 0; columna < Tablero.COLUMNAS; columna++) {
+                int filaEspejo = Tablero.FILAS - 1 - fila;
+                int columnaEspejo = Tablero.COLUMNAS - 1 - columna;
+                assertSame(tablero.getCasilla(fila, columna),
+                        tablero.getCasilla(filaEspejo, columnaEspejo));
+            }
+        }
+    }
+
+    @Test
+    void cadaLlamadaDevuelveUnTableroNuevo() {
+        Tablero primero = Tablero.crearMapaEstandar();
+        Tablero segundo = Tablero.crearMapaEstandar();
+        assertFalse(primero == segundo);
+    }
+    // ---------- esZonaDespliegue ----------
+
+    @Test
+    void lasFilas0a2SonZonaDelJugador1() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.esZonaDespliegue(new Posicion(0, 0), 1));
+        assertTrue(tablero.esZonaDespliegue(new Posicion(2, 9), 1));
+    }
+
+    @Test
+    void laFila3NoEsZonaDelJugador1() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDespliegue(new Posicion(3, 0), 1));
+    }
+
+    @Test
+    void lasFilas7a9SonZonaDelJugador2() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.esZonaDespliegue(new Posicion(7, 0), 2));
+        assertTrue(tablero.esZonaDespliegue(new Posicion(9, 9), 2));
+    }
+
+    @Test
+    void laFila6NoEsZonaDelJugador2() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDespliegue(new Posicion(6, 0), 2));
+    }
+
+    @Test
+    void laZonaDeUnJugadorNoEsLaDelOtro() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDespliegue(new Posicion(0, 0), 2));
+        assertFalse(tablero.esZonaDespliegue(new Posicion(9, 9), 1));
+    }
+
+    @Test
+    void fueraDelTableroNoEsZonaDeDespliegue() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDespliegue(new Posicion(-1, 0), 1));
+        assertFalse(tablero.esZonaDespliegue(new Posicion(0, 10), 1));
+        assertFalse(tablero.esZonaDespliegue(new Posicion(10, 0), 2));
+        assertFalse(tablero.esZonaDespliegue(new Posicion(9, -1), 2));
+    }
+
+    @Test
+    void numeroDeJugadorInvalidoLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.esZonaDespliegue(new Posicion(0, 0), 3);
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void jugadorCeroTambienEsInvalido() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.esZonaDespliegue(new Posicion(0, 0), 0);
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    // ---------- esZonaDominacion ----------
+
+    @Test
+    void lasCuatroCasillasCentralesSonZonaDeDominacion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.esZonaDominacion(new Posicion(4, 4)));
+        assertTrue(tablero.esZonaDominacion(new Posicion(4, 5)));
+        assertTrue(tablero.esZonaDominacion(new Posicion(5, 4)));
+        assertTrue(tablero.esZonaDominacion(new Posicion(5, 5)));
+    }
+
+    @Test
+    void lasVecinasDeLaZonaCentralNoSonDominacion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDominacion(new Posicion(3, 4))); // arriba
+        assertFalse(tablero.esZonaDominacion(new Posicion(6, 5))); // abajo
+        assertFalse(tablero.esZonaDominacion(new Posicion(4, 3))); // izquierda
+        assertFalse(tablero.esZonaDominacion(new Posicion(5, 6))); // derecha
+        assertFalse(tablero.esZonaDominacion(new Posicion(3, 3))); // diagonal
+    }
+
+    @Test
+    void unaCasillaNeutralCualquieraNoEsDominacion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDominacion(new Posicion(3, 0)));
+        assertFalse(tablero.esZonaDominacion(new Posicion(4, 9)));
+    }
+
+    @Test
+    void fueraDelTableroNoEsZonaDeDominacion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esZonaDominacion(new Posicion(-1, 4)));
+        assertFalse(tablero.esZonaDominacion(new Posicion(4, 10)));
+    }
+    // ---------- getVecinos ----------
+
+    @Test
+    void enElMedioConTodoAguaTiene8Vecinos() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(4, 4));
+        assertEquals(8, vecinos.size());
+    }
+
+    @Test
+    void devuelveLasOchoCasillasAdyacentes() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(4, 4));
+        assertTrue(vecinos.contains(new Posicion(3, 3))); // arriba a la izquierda
+        assertTrue(vecinos.contains(new Posicion(3, 4))); // arriba
+        assertTrue(vecinos.contains(new Posicion(3, 5))); // arriba a la derecha
+        assertTrue(vecinos.contains(new Posicion(4, 3))); // izquierda
+        assertTrue(vecinos.contains(new Posicion(4, 5))); // derecha
+        assertTrue(vecinos.contains(new Posicion(5, 3))); // abajo a la izquierda
+        assertTrue(vecinos.contains(new Posicion(5, 4))); // abajo
+        assertTrue(vecinos.contains(new Posicion(5, 5))); // abajo a la derecha
+    }
+
+    @Test
+    void noIncluyeLaPropiaPosicion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(4, 4));
+        assertFalse(vecinos.contains(new Posicion(4, 4)));
+    }
+
+    @Test
+    void enLaEsquinaSuperiorIzquierdaTiene3Vecinos() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(0, 0));
+        assertEquals(3, vecinos.size());
+        assertTrue(vecinos.contains(new Posicion(0, 1)));
+        assertTrue(vecinos.contains(new Posicion(1, 0)));
+        assertTrue(vecinos.contains(new Posicion(1, 1)));
+    }
+
+    @Test
+    void enLaEsquinaInferiorDerechaTiene3Vecinos() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertEquals(3, tablero.getVecinos(new Posicion(9, 9)).size());
+    }
+
+    @Test
+    void enUnBordeTiene5Vecinos() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertEquals(5, tablero.getVecinos(new Posicion(0, 5)).size()); // borde de arriba
+        assertEquals(5, tablero.getVecinos(new Posicion(5, 9)).size()); // borde derecho
+    }
+
+    @Test
+    void noIncluyeIslasNiPiedras() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.ISLA;
+        grilla[5][4] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(4, 4));
+
+        assertEquals(6, vecinos.size());
+        assertFalse(vecinos.contains(new Posicion(4, 5)));
+        assertFalse(vecinos.contains(new Posicion(5, 4)));
+    }
+
+    @Test
+    void incluyeLosRestos() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.RESTOS;
+        Tablero tablero = new Tablero(grilla);
+
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(4, 4));
+
+        assertEquals(8, vecinos.size());
+        assertTrue(vecinos.contains(new Posicion(4, 5)));
+    }
+
+    @Test
+    void enElMapaEstandarNoDevuelveLasIslasDeAlLado() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        List<Posicion> vecinos = tablero.getVecinos(new Posicion(3, 1));
+
+        assertFalse(vecinos.contains(new Posicion(3, 2))); // isla
+        assertFalse(vecinos.contains(new Posicion(4, 2))); // isla
+        assertEquals(6, vecinos.size());
+    }
+
+    @Test
+    void posicionFueraDelTableroLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.getVecinos(new Posicion(10, 0));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    // ---------- esDiagonalBloqueada ----------
+    // Se usa una grilla de agua con dos obstáculos en (4,5) y (5,4).
+    // Esas dos casillas son las esquinas del cuadrado entre (4,4) y (5,5),
+    // y también entre (4,5)-(5,4) visto desde las otras dos diagonales.
+
+    /** Grilla de agua con obstáculos en (4,5) y (5,4): bloquean la diagonal (4,4)-(5,5). */
+    private Tablero crearTableroConDiagonalBloqueada(Casilla obstaculo1, Casilla obstaculo2) {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = obstaculo1;
+        grilla[5][4] = obstaculo2;
+        return new Tablero(grilla);
+    }
+
+    @Test
+    void diagonalHaciaAbajoALaDerechaEntreDosObstaculosEstaBloqueada() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.ISLA, Casilla.ISLA);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5))); // ↘
+    }
+
+    @Test
+    void diagonalHaciaArribaALaIzquierdaEntreDosObstaculosEstaBloqueada() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.ISLA, Casilla.ISLA);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(5, 5), new Posicion(4, 4))); // ↖
+    }
+
+    @Test
+    void diagonalHaciaArribaALaDerechaEntreDosObstaculosEstaBloqueada() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][4] = Casilla.PIEDRA; // esquinas entre (5,4) y (4,5)
+        grilla[5][5] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(5, 4), new Posicion(4, 5))); // ↗
+    }
+
+    @Test
+    void diagonalHaciaAbajoALaIzquierdaEntreDosObstaculosEstaBloqueada() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][4] = Casilla.PIEDRA;
+        grilla[5][5] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(4, 5), new Posicion(5, 4))); // ↙
+    }
+
+    @Test
+    void unaIslaYUnaPiedraTambienBloquean() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.ISLA, Casilla.PIEDRA);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5)));
+    }
+
+    @Test
+    void conUnSoloObstaculoLaDiagonalEstaLibre() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.ISLA, Casilla.AGUA);
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5)));
+    }
+
+    @Test
+    void conElOtroObstaculoSoloTambienEstaLibre() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.AGUA, Casilla.PIEDRA);
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5)));
+    }
+
+    @Test
+    void sinObstaculosLaDiagonalEstaLibre() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5)));
+    }
+
+    @Test
+    void losRestosNoBloqueanLaDiagonal() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.RESTOS, Casilla.RESTOS);
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(5, 5)));
+    }
+
+    @Test
+    void unMovimientoRectoNuncaEstaBloqueadoPorDiagonal() {
+        Tablero tablero = crearTableroConDiagonalBloqueada(Casilla.ISLA, Casilla.ISLA);
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(3, 4))); // arriba
+        assertFalse(tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(4, 3))); // izquierda
+    }
+
+    @Test
+    void enElBordeDelTableroFunciona() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[3][0] = Casilla.ISLA;
+        grilla[4][1] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.esDiagonalBloqueada(new Posicion(3, 1), new Posicion(4, 0)));
+    }
+
+    @Test
+    void posicionesNoVecinasLanzanExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.esDiagonalBloqueada(new Posicion(0, 0), new Posicion(2, 2));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void laMismaPosicionLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.esDiagonalBloqueada(new Posicion(4, 4), new Posicion(4, 4));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+
+    @Test
+    void diagonalConPosicionFueraDelTableroLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.esDiagonalBloqueada(new Posicion(9, 9), new Posicion(10, 10));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+    // ---------- hayLineaDeVision ----------
+
+    @Test
+    void conTodoAguaHayVisionEnLineaRecta() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 0), new Posicion(4, 9))); // horizontal
+        assertTrue(tablero.hayLineaDeVision(new Posicion(0, 3), new Posicion(9, 3))); // vertical
+        assertTrue(tablero.hayLineaDeVision(new Posicion(0, 0), new Posicion(9, 9))); // diagonal exacta
+    }
+
+    @Test
+    void conTodoAguaHayVisionEnLineaInclinada() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.hayLineaDeVision(new Posicion(0, 0), new Posicion(2, 5)));
+        assertTrue(tablero.hayLineaDeVision(new Posicion(9, 1), new Posicion(3, 4)));
+    }
+
+    @Test
+    void unaIslaEnElMedioTapaLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertFalse(tablero.hayLineaDeVision(new Posicion(4, 0), new Posicion(4, 9)));
+    }
+
+    @Test
+    void laIslaTapaLaVisionEnLosDosSentidos() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertFalse(tablero.hayLineaDeVision(new Posicion(4, 9), new Posicion(4, 0)));
+    }
+
+    @Test
+    void unaIslaEnDiagonalTapaLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[5][5] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertFalse(tablero.hayLineaDeVision(new Posicion(3, 3), new Posicion(7, 7)));
+    }
+
+    @Test
+    void unaPiedraEnElMedioNoTapaLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 0), new Posicion(4, 9)));
+    }
+
+    @Test
+    void losRestosNoTapanLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.RESTOS;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 0), new Posicion(4, 9)));
+    }
+
+    @Test
+    void unaIslaFueraDeLaLineaNoTapaLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[3][5] = Casilla.ISLA; // una fila arriba de la línea
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 0), new Posicion(4, 9)));
+    }
+
+    @Test
+    void lasCasillasAdyacentesSiempreSeVen() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[3][4] = Casilla.ISLA; // islas alrededor que no están entre las dos
+        grilla[5][4] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 4), new Posicion(4, 5))); // al costado
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 4), new Posicion(3, 5))); // en diagonal
+    }
+
+    @Test
+    void unaCasillaSeVeASiMisma() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        assertTrue(tablero.hayLineaDeVision(new Posicion(4, 4), new Posicion(4, 4)));
+    }
+
+    @Test
+    void dosIslasQueSeTocanEnDiagonalTapanLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.ISLA;
+        grilla[5][4] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertFalse(tablero.hayLineaDeVision(new Posicion(3, 3), new Posicion(6, 6)));
+    }
+
+    @Test
+    void unaSolaIslaEnLaEsquinaNoTapaLaVisionDiagonal() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.ISLA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(3, 3), new Posicion(6, 6)));
+    }
+
+    @Test
+    void dosPiedrasQueSeTocanEnDiagonalNoTapanLaVision() {
+        Casilla[][] grilla = crearGrillaDeAgua();
+        grilla[4][5] = Casilla.PIEDRA;
+        grilla[5][4] = Casilla.PIEDRA;
+        Tablero tablero = new Tablero(grilla);
+        assertTrue(tablero.hayLineaDeVision(new Posicion(3, 3), new Posicion(6, 6)));
+    }
+
+    @Test
+    void enElMapaEstandarLaIslaTapaLaVision() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        assertFalse(tablero.hayLineaDeVision(new Posicion(2, 2), new Posicion(5, 2))); // isla en (3,2)
+        assertTrue(tablero.hayLineaDeVision(new Posicion(2, 0), new Posicion(7, 0)));  // columna 0 libre
+    }
+
+    @Test
+    void lineaDeVisionConPosicionFueraDelTableroLanzaExcepcion() {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        try {
+            tablero.hayLineaDeVision(new Posicion(4, 4), new Posicion(4, 10));
+            fail("Debería haber lanzado IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // esperado
+        }
+    }
+    @Test
+    void laVisionEsSimetricaEnElCasoReportado() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        Posicion a = new Posicion(2, 2);
+        Posicion b = new Posicion(3, 4);
+        assertEquals(tablero.hayLineaDeVision(a, b), tablero.hayLineaDeVision(b, a));
+    }
+
+    @Test
+    void laVisionEsSimetricaEnTodoElMapaEstandar() {
+        Tablero tablero = Tablero.crearMapaEstandar();
+        for (int fila1 = 0; fila1 < Tablero.FILAS; fila1++) {
+            for (int columna1 = 0; columna1 < Tablero.COLUMNAS; columna1++) {
+                for (int fila2 = 0; fila2 < Tablero.FILAS; fila2++) {
+                    for (int columna2 = 0; columna2 < Tablero.COLUMNAS; columna2++) {
+                        Posicion a = new Posicion(fila1, columna1);
+                        Posicion b = new Posicion(fila2, columna2);
+                        assertEquals(tablero.hayLineaDeVision(a, b), tablero.hayLineaDeVision(b, a),
+                                "La visión no es simétrica entre " + a + " y " + b);
+                    }
+                }
+            }
+        }
+    }
+
+
+    // ---------- restos (convertirEnRestos y getRestos) ----------
+
+    @Test
+    void convertirEnRestosCambiaLaCasillaARestos() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        tablero.convertirEnRestos(new Posicion(4, 6));
+
+        assertSame(Casilla.RESTOS, tablero.getCasilla(new Posicion(4, 6)));
+    }
+
+    @Test
+    void convertirEnRestosFuncionaEnLasEsquinas() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        tablero.convertirEnRestos(new Posicion(0, 0));
+        tablero.convertirEnRestos(new Posicion(9, 9));
+
+        assertSame(Casilla.RESTOS, tablero.getCasilla(new Posicion(0, 0)));
+        assertSame(Casilla.RESTOS, tablero.getCasilla(new Posicion(9, 9)));
+    }
+
+    @Test
+    void convertirEnRestosFueraDelTableroLanzaExcepcion() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        assertThrows(IllegalArgumentException.class, () -> tablero.convertirEnRestos(new Posicion(10, 0)));
+        assertThrows(IllegalArgumentException.class, () -> tablero.convertirEnRestos(new Posicion(0, -1)));
+    }
+
+    @Test
+    void losRestosNoBloqueanNiElPasoNiLaVision() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        tablero.convertirEnRestos(new Posicion(5, 5));
+
+        assertTrue(tablero.esTransitable(new Posicion(5, 5)));
+        assertTrue(tablero.hayLineaDeVision(new Posicion(5, 2), new Posicion(5, 8)));
+    }
+
+    @Test
+    void unTableroNuevoNoTieneRestos() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        assertTrue(tablero.getRestos().isEmpty());
+    }
+
+    @Test
+    void getRestosDevuelveTodasLasPosicionesRecorriendoPorFilas() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        tablero.convertirEnRestos(new Posicion(9, 9));
+        tablero.convertirEnRestos(new Posicion(0, 3));
+        tablero.convertirEnRestos(new Posicion(4, 1));
+
+        assertEquals(List.of(new Posicion(0, 3), new Posicion(4, 1), new Posicion(9, 9)), tablero.getRestos());
+    }
+
+    @Test
+    void convertirDosVecesLaMismaCasillaNoDuplicaLosRestos() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+
+        tablero.convertirEnRestos(new Posicion(2, 2));
+        tablero.convertirEnRestos(new Posicion(2, 2));
+
+        assertEquals(List.of(new Posicion(2, 2)), tablero.getRestos());
+    }
+
+    @Test
+    void laListaDeRestosNoSePuedeModificarDesdeAfuera() throws MapaInvalidoException {
+        Tablero tablero = new Tablero(crearGrillaDeAgua());
+        tablero.convertirEnRestos(new Posicion(1, 1));
+
+        List<Posicion> restos = tablero.getRestos();
+
+        assertThrows(UnsupportedOperationException.class, () -> restos.add(new Posicion(3, 3)));
+        assertEquals(1, tablero.getRestos().size());
+    }
+}

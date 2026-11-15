@@ -1,0 +1,17 @@
+BATALLA-NAVAL;1
+CABECERA;prueba-rota;2026-11-14T20:43:58;Ana;Beto;10;EN_JUEGO
+PARTIDA;estandar;1
+JUGADOR;1;Ana;6;5
+JUGADOR;2;Beto;6;2
+BARCO;1;A;1;2;4;muchas;0;0;2;false;false
+BARCO;2;C;1;0;0;5;0;0;3;false;false
+BARCO;3;C;1;0;9;5;0;0;3;false;false
+BARCO;4;D;1;4;4;3;0;0;4;false;false
+BARCO;5;D;1;2;1;3;0;0;4;false;false
+BARCO;6;D;1;1;8;3;0;0;4;false;false
+BARCO;7;A;2;7;4;8;0;0;2;false;false
+BARCO;8;C;2;9;0;5;0;0;3;false;false
+BARCO;9;C;2;9;9;5;0;0;3;false;false
+BARCO;10;D;2;8;1;3;0;0;4;false;false
+BARCO;11;D;2;8;6;3;0;0;4;false;false
+BARCO;12;D;2;8;8;3;0;0;4;false;false
