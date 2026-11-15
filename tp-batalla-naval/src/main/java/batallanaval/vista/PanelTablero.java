@@ -8,6 +8,7 @@ import batallanaval.controlador.PartidaTablero;
 import batallanaval.controlador.ResultadoPartida;
 import batallanaval.modelo.Posicion;
 import batallanaval.modelo.Casilla;
+import batallanaval.modelo.Disparo;
 import batallanaval.excepciones.AccionInvalidaException;
 
 import javax.swing.AbstractAction;
@@ -26,6 +27,9 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Line2D;
+import java.awt.geom.Path2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -43,8 +47,12 @@ import java.util.function.Consumer;
  * y la niebla de guerra sobre las casillas que el jugador no ve.
  * Cuando hay un barco seleccionado, lo resalta, sombrea las casillas a las que puede llegar
  * y dibuja la ruta planificada paso a paso con su costo. Si ese barco puede disparar, marca en rojo
- * los objetivos válidos, y un clic sobre uno de ellos dispara. Después del disparo, la casilla del
- * objetivo destella un instante: naranja si recibió daño, amarillo más largo si se hundió.
+ * los objetivos válidos, y un clic sobre uno de ellos dispara. También marca hasta dónde llega el disparo
+ * del barco elegido. Cada disparo (con clic o con el botón del panel) se anima: una bala que va del
+ * tirador al blanco, una explosión y el daño que sube ("-3"); si hunde al blanco, dice "¡Hundido!".
+ * Al empezar el turno marca los barcos propios que recibieron disparos en el turno del rival, con el
+ * daño y una línea desde donde vino el tiro. Los barcos propios que ya no pueden moverse ni disparar
+ * se dibujan en gris. Cada barco se dibuja como un casco visto desde arriba, apuntando hacia el rival.
  * Un clic en un barco propio lo selecciona y, con un barco seleccionado, un clic en otra casilla
  * agrega ese paso a la ruta (después se confirma con Enter o con el botón del panel lateral).
  * Al pasar el mouse sobre un barco muestra un tooltip con sus atributos.
@@ -62,9 +70,13 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     private static final int FILAS = 10;
     private static final int COLUMNAS = 10;
 
-    // Duración de los destellos de disparo y de hundimiento, en milisegundos
-    private static final int DURACION_DESTELLO_DISPARO = 400;
-    private static final int DURACION_DESTELLO_HUNDIMIENTO = 900;
+    // Duración de la animación de un disparo y de un hundimiento, en milisegundos
+    private static final int DURACION_DISPARO = 1100;
+    private static final int DURACION_HUNDIMIENTO = 1600;
+    // Primera parte de la animación: la bala viaja del tirador al blanco
+    private static final int DURACION_VIAJE_BALA = 250;
+    // Cada cuánto se redibuja la animación (unos 30 cuadros por segundo)
+    private static final int MS_POR_CUADRO = 33;
 
     // Parte de la partida que necesita el panel para dibujar (ISP: no recibe la Partida entera)
     private final PartidaTablero partidaTablero;
@@ -75,11 +87,10 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     // Guarda la posición de la celda sobre la cual está el mouse actualmente
     private Posicion casillaHover = null;
 
-    // Destello después de un disparo: en qué casilla, si fue un hundimiento,
-    // y el Timer que lo apaga cuando pasa el tiempo
-    private Posicion casillaDestello = null;
-    private boolean destelloEsHundimiento = false;
-    private final Timer temporizadorDestello;
+    // Animación del último disparo: cuál se está animando, cuándo empezó y el Timer que redibuja
+    private transient Disparo disparoAnimado = null;
+    private long inicioAnimacion = 0;
+    private final Timer temporizadorAnimacion;
 
     // Qué hacer cuando se hace clic en una casilla (null: el clic es de la fase de juego)
     private transient Consumer<Posicion> alClickearCasilla = null;
@@ -109,10 +120,9 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         // Atajos de teclado: Esc, Backspace y Enter
         registrarAtajosDeTeclado();
 
-        // Timer de Swing para apagar el destello: avisa una sola vez (no se repite)
-        // y corre en el hilo de eventos (EDT), así que puede repintar sin problemas
-        temporizadorDestello = new Timer(DURACION_DESTELLO_DISPARO, e -> terminarDestello());
-        temporizadorDestello.setRepeats(false);
+        // Timer de Swing para la animación de los disparos: corre en el hilo de eventos (EDT),
+        // así que puede repintar sin problemas. Se frena solo cuando termina la animación.
+        temporizadorAnimacion = new Timer(MS_POR_CUADRO, e -> avanzarAnimacion());
     }
 
     /**
@@ -143,7 +153,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     /**
      * Dibuja las casillas, las zonas de despliegue, la niebla de guerra, las casillas alcanzables,
      * la ruta planificada, los barcos, los objetivos válidos, el barco seleccionado, la zona de dominación,
-     * el resaltado de la casilla bajo el mouse y el destello de un disparo.
+     * el resaltado de la casilla bajo el mouse y la animación de un disparo.
      *
      * @param g contexto gráfico que entrega Swing
      */
@@ -228,10 +238,14 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
                 g2d.setColor(Color.BLACK);
                 g2d.setStroke(new BasicStroke(1));
                 g2d.drawRect(x, y, tamanoCelda, tamanoCelda);
+
+                // Coordenada de la casilla (fila,columna), chiquita en la esquina de arriba a la izquierda
+                dibujarCoordenada(g2d, fila, col, x, y, tamanoCelda);
             }
         }
 
-        // Casillas alcanzables y ruta planificada del barco seleccionado (debajo de los barcos)
+        // Alcance de disparo del barco elegido, casillas alcanzables y ruta (debajo de los barcos)
+        dibujarAlcanceDeDisparo(g2d, tamanoCelda, inicioX, inicioY);
         dibujarCasillasAlcanzables(g2d, tamanoCelda, inicioX, inicioY);
         dibujarRuta(g2d, tamanoCelda, inicioX, inicioY);
 
@@ -240,11 +254,22 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         dibujarBarcos(g2d, partidaTablero.getBarcosPropios(), tamanoCelda, inicioX, inicioY);
         dibujarBarcos(g2d, partidaTablero.getBarcosEnemigosVisibles(), tamanoCelda, inicioX, inicioY);
 
+        // Lo que le pegaron a este jugador en el turno del rival
+        dibujarDisparosRecibidos(g2d, tamanoCelda, inicioX, inicioY);
+
         // Objetivos válidos del barco seleccionado: borde rojo sobre cada uno
         dibujarObjetivosValidos(g2d, tamanoCelda, inicioX, inicioY);
 
         // El barco seleccionado lleva un borde amarillo, arriba de su dibujo
         dibujarBarcoSeleccionado(g2d, tamanoCelda, inicioX, inicioY);
+
+        // Los barcos propios con la habilidad activa llevan un contorno celeste (adentro del amarillo)
+        for (EstadoBarco barco : partidaTablero.getBarcosPropios()) {
+            if (barco.habilidadActiva() && barco.posicion() != null) {
+                dibujarContornoHabilidad(g2d, inicioX + barco.posicion().getColumna() * tamanoCelda,
+                        inicioY + barco.posicion().getFila() * tamanoCelda, tamanoCelda);
+            }
+        }
 
         // La zona de dominación y el hover se dibujan después del for: si se dibujaran
         // adentro, las celdas siguientes les pintarían el borde negro encima.
@@ -271,11 +296,11 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
             g2d.drawRect(x, y, tamanoCelda, tamanoCelda);
         }
 
-        // Destello de disparo o hundimiento, arriba de todo
-        dibujarDestello(g2d, tamanoCelda, inicioX, inicioY);
+        // Animación del último disparo, arriba de todo
+        dibujarAnimacionDisparo(g2d, tamanoCelda, inicioX, inicioY);
     }
 
-    // Dibujo de barcos 
+    // Dibujo de barcos
 
     /**
      * Dibuja los barcos de la lista que ya tienen posición. Los datos llegan de la partida
@@ -293,36 +318,168 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     }
 
     /**
-     * Dibuja un barco en su celda: un fondo redondeado con el color del jugador,
-     * el símbolo con la vida (por ejemplo "C5") y abajo una barra de vida.
+     * Dibuja un barco en su celda como un casco visto desde arriba, con la proa apuntando hacia el
+     * rival (abajo para el jugador 1, arriba para el 2) y una torreta por cada nivel de tamaño:
+     * 1 el destructor, 2 el crucero y 3 el acorazado. En una esquina va el símbolo con la vida
+     * (por ejemplo "C5") y abajo una barra de vida. Los barcos propios que ya no pueden hacer nada
+     * en este turno se dibujan en gris.
      */
     private void dibujarBarco(Graphics2D g2d, EstadoBarco barco, int x, int y, int tamanoCelda) {
-        int margen = tamanoCelda / 8;
-        int lado = tamanoCelda - 2 * margen;
+        boolean apagado = barco.esPropio() && !modoDespliegue && !partidaTablero.puedeActuar(barco.id());
+        Color base = apagado ? new Color(125, 125, 125) : colorJugador(barco.numeroJugador());
 
-        // Fondo con el color del jugador
-        g2d.setColor(colorJugador(barco.numeroJugador()));
-        g2d.fillRoundRect(x + margen, y + margen, lado, lado, margen, margen);
+        double ancho = proporcionAncho(barco.simbolo()) * tamanoCelda;
+        double largo = 0.8 * tamanoCelda;
+        double centroX = x + tamanoCelda / 2.0;
+        double centroY = y + tamanoCelda * 0.47;
 
-        // Texto: símbolo + vida, centrado en la celda
+        Graphics2D g = (Graphics2D) g2d.create();
+        g.translate(centroX, centroY);
+        if (barco.numeroJugador() == 2) {
+            g.scale(1, -1); // el jugador 2 apunta hacia arriba
+        }
+
+        // Casco: popa redondeada arriba y proa en punta abajo (coordenadas locales, centro en 0,0)
+        double popa = -largo / 2;
+        double proa = largo / 2;
+        Path2D casco = new Path2D.Double();
+        casco.moveTo(-ancho / 2, popa + ancho * 0.3);
+        casco.quadTo(-ancho / 2, popa, 0, popa);
+        casco.quadTo(ancho / 2, popa, ancho / 2, popa + ancho * 0.3);
+        casco.lineTo(ancho / 2, proa - largo * 0.38);
+        casco.quadTo(ancho / 2, proa - largo * 0.1, 0, proa);
+        casco.quadTo(-ancho / 2, proa - largo * 0.1, -ancho / 2, proa - largo * 0.38);
+        casco.closePath();
+        g.setColor(new Color(0, 0, 0, 70)); // sombra
+        g.translate(1.5, 2);
+        g.fill(casco);
+        g.translate(-1.5, -2);
+        g.setColor(base);
+        g.fill(casco);
+        g.setColor(base.darker().darker());
+        g.setStroke(new BasicStroke(Math.max(1.5f, tamanoCelda / 40f)));
+        g.draw(casco);
+
+        // Cubierta: una franja más clara en el medio del casco
+        g.setColor(mezclar(base, Color.WHITE, 0.35));
+        g.fill(new Path2D.Double(new java.awt.geom.RoundRectangle2D.Double(
+                -ancho * 0.18, popa + largo * 0.12, ancho * 0.36, largo * 0.62, ancho * 0.2, ancho * 0.2)));
+
+        // Torretas con el cañón apuntando a la proa
+        int torretas = cantidadTorretas(barco.simbolo());
+        double radio = ancho * 0.2;
+        for (int i = 0; i < torretas; i++) {
+            double ty = popa + largo * 0.28 + i * largo * (torretas == 1 ? 0 : 0.42 / (torretas - 1));
+            if (torretas == 1) {
+                ty = 0;
+            }
+            g.setColor(base.darker().darker());
+            g.setStroke(new BasicStroke(Math.max(2f, tamanoCelda / 28f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.draw(new Line2D.Double(0, ty, 0, ty + radio * 2.1));
+            g.setColor(base.darker());
+            g.fill(new Ellipse2D.Double(-radio, ty - radio, radio * 2, radio * 2));
+        }
+        g.dispose();
+
+        // Etiqueta con símbolo y vida, en la esquina de arriba a la derecha
+        // (la de la izquierda es para la coordenada de la casilla)
         String texto = "" + barco.simbolo() + barco.vida();
-        g2d.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.max(10, tamanoCelda / 3)));
+        g2d.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.max(9, tamanoCelda / 5)));
         FontMetrics medidas = g2d.getFontMetrics();
-        int xTexto = x + (tamanoCelda - medidas.stringWidth(texto)) / 2;
-        int yTexto = y + (tamanoCelda + medidas.getAscent()) / 2 - margen;
+        int anchoEtiqueta = medidas.stringWidth(texto) + 6;
+        int altoEtiqueta = medidas.getAscent() + 2;
+        g2d.setColor(new Color(20, 20, 30, 190));
+        int xEtiqueta = x + tamanoCelda - anchoEtiqueta - 2;
+        g2d.fillRoundRect(xEtiqueta, y + 2, anchoEtiqueta, altoEtiqueta, 6, 6);
         g2d.setColor(Color.WHITE);
-        g2d.drawString(texto, xTexto, yTexto);
+        g2d.drawString(texto, xEtiqueta + 3, y + 1 + medidas.getAscent());
 
         // Barra de vida: fondo oscuro y encima la parte que le queda, proporcional a la vida
-        int altoBarra = Math.max(3, tamanoCelda / 10);
-        int xBarra = x + margen + 2;
-        int yBarra = y + tamanoCelda - margen - altoBarra - 2;
-        int anchoBarra = lado - 4;
+        int margen = tamanoCelda / 8;
+        int altoBarra = Math.max(3, tamanoCelda / 12);
+        int xBarra = x + margen;
+        int yBarra = y + tamanoCelda - altoBarra - 3;
+        int anchoBarra = tamanoCelda - 2 * margen;
         int anchoVida = anchoBarra * barco.vida() / barco.vidaMaxima();
-        g2d.setColor(new Color(60, 60, 60));
+        g2d.setColor(new Color(40, 40, 40));
         g2d.fillRect(xBarra, yBarra, anchoBarra, altoBarra);
-        g2d.setColor(new Color(60, 200, 80)); // Verde
+        g2d.setColor(colorVida(barco.vida(), barco.vidaMaxima()));
         g2d.fillRect(xBarra, yBarra, anchoVida, altoBarra);
+    }
+
+    /**
+     * Escribe la coordenada "fila,columna" en la esquina de arriba a la izquierda de la casilla,
+     * con la misma numeración que usan el historial y los avisos, por ejemplo "4,7".
+     */
+    private static void dibujarCoordenada(Graphics2D g2d, int fila, int col, int x, int y, int tamanoCelda) {
+        String texto = fila + "," + col;
+        g2d.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, Math.max(8, tamanoCelda / 7)));
+        FontMetrics medidas = g2d.getFontMetrics();
+        int xTexto = x + 3;
+        int yTexto = y + 2 + medidas.getAscent();
+        g2d.setColor(new Color(0, 0, 0, 120));
+        g2d.drawString(texto, xTexto + 1, yTexto + 1);
+        g2d.setColor(new Color(255, 255, 255, 200));
+        g2d.drawString(texto, xTexto, yTexto);
+    }
+
+    /**
+     * Contorno que indica que el barco tiene la habilidad activa en este turno: un halo celeste
+     * ancho y semitransparente, y encima un borde celeste fuerte.
+     */
+    private static void dibujarContornoHabilidad(Graphics2D g2d, int x, int y, int tamanoCelda) {
+        int arco = tamanoCelda / 4;
+        int margen = Math.max(7, tamanoCelda / 9);
+        int lado = tamanoCelda - 2 * margen;
+        g2d.setColor(new Color(0, 230, 255, 110));
+        g2d.setStroke(new BasicStroke(Math.max(7f, tamanoCelda / 8f)));
+        g2d.drawRoundRect(x + margen, y + margen, lado, lado, arco, arco);
+        g2d.setColor(new Color(0, 240, 255));
+        g2d.setStroke(new BasicStroke(Math.max(3f, tamanoCelda / 18f)));
+        g2d.drawRoundRect(x + margen, y + margen, lado, lado, arco, arco);
+    }
+
+    /** Ancho del casco, en proporción a la celda: cuanto más grande el barco, más ancho. */
+    private static double proporcionAncho(char simbolo) {
+        switch (simbolo) {
+            case 'A':
+                return 0.6;
+            case 'C':
+                return 0.5;
+            default:
+                return 0.42;
+        }
+    }
+
+    private static int cantidadTorretas(char simbolo) {
+        switch (simbolo) {
+            case 'A':
+                return 3;
+            case 'C':
+                return 2;
+            default:
+                return 1;
+        }
+    }
+
+    /** Verde con mucha vida, amarillo a la mitad y rojo cuando queda poca. */
+    private static Color colorVida(int vida, int vidaMaxima) {
+        double parte = vidaMaxima == 0 ? 0 : (double) vida / vidaMaxima;
+        if (parte > 0.6) {
+            return new Color(60, 200, 80);
+        }
+        if (parte > 0.3) {
+            return new Color(240, 190, 40);
+        }
+        return new Color(230, 50, 40);
+    }
+
+    /** Mezcla dos colores: con {@code parte} 0 queda el primero y con 1 el segundo. */
+    private static Color mezclar(Color a, Color b, double parte) {
+        return new Color(
+                (int) (a.getRed() + (b.getRed() - a.getRed()) * parte),
+                (int) (a.getGreen() + (b.getGreen() - a.getGreen()) * parte),
+                (int) (a.getBlue() + (b.getBlue() - a.getBlue()) * parte));
     }
 
     /** Color que identifica a cada jugador (el mismo tono que su zona de despliegue). */
@@ -333,7 +490,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         return new Color(170, 80, 220);     // Violeta: jugador 2
     }
 
-    // Selección, casillas alcanzables y ruta 
+    // Selección, casillas alcanzables y ruta
 
     /**
      * Resalta con un borde amarillo el barco seleccionado. Si no hay selección
@@ -349,6 +506,34 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         g2d.setColor(Color.YELLOW);
         g2d.setStroke(new BasicStroke(3));
         g2d.drawRect(x + 2, y + 2, tamanoCelda - 4, tamanoCelda - 4);
+    }
+
+    /**
+     * Marca hasta dónde llega el disparo del barco elegido: un cuadrado de su rango alrededor
+     * (las distancias se cuentan en casillas y la diagonal vale uno), con un tinte rojo muy suave y
+     * un borde punteado. Las islas pueden tapar algunas casillas de adentro: eso lo decide la partida
+     * al armar los objetivos válidos, que van marcados en rojo fuerte.
+     */
+    private void dibujarAlcanceDeDisparo(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
+        EstadoBarco seleccionado = partidaTablero.getBarcoSeleccionado();
+        if (modoDespliegue || seleccionado == null || seleccionado.posicion() == null
+                || seleccionado.cooldownDisparo() > 0 || !partidaTablero.puedeActuar(seleccionado.id())) {
+            return;
+        }
+        int rango = seleccionado.rangoDisparo();
+        int filaMin = Math.max(0, seleccionado.posicion().getFila() - rango);
+        int filaMax = Math.min(FILAS - 1, seleccionado.posicion().getFila() + rango);
+        int colMin = Math.max(0, seleccionado.posicion().getColumna() - rango);
+        int colMax = Math.min(COLUMNAS - 1, seleccionado.posicion().getColumna() + rango);
+        int x = inicioX + colMin * tamanoCelda;
+        int y = inicioY + filaMin * tamanoCelda;
+        int ancho = (colMax - colMin + 1) * tamanoCelda;
+        int alto = (filaMax - filaMin + 1) * tamanoCelda;
+        g2d.setColor(new Color(255, 60, 60, 30));
+        g2d.fillRect(x, y, ancho, alto);
+        g2d.setColor(new Color(255, 70, 70, 210));
+        g2d.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, new float[] {8f, 6f}, 0f));
+        g2d.drawRect(x + 1, y + 1, ancho - 2, alto - 2);
     }
 
     /**
@@ -405,7 +590,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         g2d.drawString(costo, x + (tamanoCelda - medidasCosto.stringWidth(costo)) / 2, y + tamanoCelda - 4);
     }
 
-    // Objetivos válidos y disparo con clic 
+    // Objetivos válidos y disparo con clic
 
     /**
      * Marca con un borde rojo cada objetivo válido. La partida decide cuáles son
@@ -435,9 +620,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         for (EstadoBarco objetivo : partidaTablero.getObjetivosValidos()) {
             if (pos.equals(objetivo.posicion())) {
                 try {
-                    partidaCombate.disparar(objetivo.id());
-                    // Si después del disparo la casilla quedó como restos, el barco se hundió
-                    iniciarDestello(pos, partidaTablero.getCasilla(pos) == Casilla.RESTOS);
+                    partidaCombate.disparar(objetivo.id()); // la animación la arranca el aviso de la partida
                 } catch (AccionInvalidaException ex) {
                     mostrarError(ex);
                 }
@@ -484,54 +667,163 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         }
     }
 
-    // Destello de disparo e hundimiento 
+    // Animación de los disparos y marcas de lo que le pegaron al jugador
 
     /**
-     * Prende el destello en la casilla del disparo y arranca el Timer que lo apaga.
-     * El de hundimiento dura más, para que se note la diferencia.
+     * Si la partida tiene un disparo nuevo (con clic o con el botón del panel), arranca su
+     * animación. Se llama en el EDT cada vez que la partida avisa un cambio.
      */
-    private void iniciarDestello(Posicion pos, boolean hundimiento) {
-        casillaDestello = pos;
-        destelloEsHundimiento = hundimiento;
-        if (hundimiento) {
-            temporizadorDestello.setInitialDelay(DURACION_DESTELLO_HUNDIMIENTO);
-        } else {
-            temporizadorDestello.setInitialDelay(DURACION_DESTELLO_DISPARO);
+    private void revisarDisparoNuevo() {
+        Disparo ultimo = partidaTablero.getUltimoDisparo();
+        if (ultimo != null && ultimo != disparoAnimado) {
+            disparoAnimado = ultimo;
+            inicioAnimacion = System.currentTimeMillis();
+            temporizadorAnimacion.restart();
         }
-        temporizadorDestello.restart(); // si había otro destello, empieza a contar de nuevo
+    }
+
+    /** Un cuadro de la animación: redibuja y, cuando terminó, frena el Timer. */
+    private void avanzarAnimacion() {
+        if (disparoAnimado == null || tiempoDeAnimacion() > duracion(disparoAnimado)) {
+            temporizadorAnimacion.stop();
+        }
         repaint();
     }
 
-    /** Apaga el destello. Lo llama el Timer cuando se cumple el tiempo. */
-    private void terminarDestello() {
-        casillaDestello = null;
-        repaint();
+    private long tiempoDeAnimacion() {
+        return System.currentTimeMillis() - inicioAnimacion;
+    }
+
+    private static int duracion(Disparo disparo) {
+        return disparo.hundimiento() ? DURACION_HUNDIMIENTO : DURACION_DISPARO;
     }
 
     /**
-     * Dibuja el destello, si hay uno prendido: naranja para un disparo,
-     * amarillo con borde blanco para un hundimiento.
+     * Dibuja el cuadro actual de la animación del último disparo: primero la bala viaja del tirador
+     * al blanco, después una explosión en el blanco y el daño que sube y se desvanece. Si lo hundió,
+     * la explosión es más grande y aparece "¡Hundido!".
      */
-    private void dibujarDestello(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
-        if (casillaDestello == null) {
+    private void dibujarAnimacionDisparo(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
+        if (disparoAnimado == null) {
             return;
         }
-        int x = inicioX + (casillaDestello.getColumna() * tamanoCelda);
-        int y = inicioY + (casillaDestello.getFila() * tamanoCelda);
-        if (destelloEsHundimiento) {
-            g2d.setColor(new Color(255, 230, 0, 200)); // Amarillo: hundimiento
-        } else {
-            g2d.setColor(new Color(255, 100, 0, 170)); // Naranja: disparo
+        long t = tiempoDeAnimacion();
+        int total = duracion(disparoAnimado);
+        if (t > total) {
+            return;
         }
-        g2d.fillRect(x, y, tamanoCelda, tamanoCelda);
-        if (destelloEsHundimiento) {
+        double ox = centro(inicioX, disparoAnimado.origen().getColumna(), tamanoCelda);
+        double oy = centro(inicioY, disparoAnimado.origen().getFila(), tamanoCelda);
+        double dx = centro(inicioX, disparoAnimado.destino().getColumna(), tamanoCelda);
+        double dy = centro(inicioY, disparoAnimado.destino().getFila(), tamanoCelda);
+
+        if (t < DURACION_VIAJE_BALA) {
+            double avance = (double) t / DURACION_VIAJE_BALA;
+            double bx = ox + (dx - ox) * avance;
+            double by = oy + (dy - oy) * avance;
+            g2d.setColor(new Color(255, 200, 60, 200));
+            g2d.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2d.draw(new Line2D.Double(ox, oy, bx, by));
             g2d.setColor(Color.WHITE);
-            g2d.setStroke(new BasicStroke(3));
-            g2d.drawRect(x + 1, y + 1, tamanoCelda - 2, tamanoCelda - 2);
+            double r = tamanoCelda * 0.09;
+            g2d.fill(new Ellipse2D.Double(bx - r, by - r, r * 2, r * 2));
+            return;
+        }
+
+        double avance = (double) (t - DURACION_VIAJE_BALA) / (total - DURACION_VIAJE_BALA);
+        int opacidad = (int) (255 * (1 - avance));
+
+        // Estela del tiro, cada vez más transparente
+        g2d.setColor(new Color(255, 200, 60, opacidad / 3));
+        g2d.setStroke(new BasicStroke(2f));
+        g2d.draw(new Line2D.Double(ox, oy, dx, dy));
+
+        // Explosión que crece y se apaga
+        double radioMax = tamanoCelda * (disparoAnimado.hundimiento() ? 0.85 : 0.55);
+        double radio = tamanoCelda * 0.15 + (radioMax - tamanoCelda * 0.15) * Math.min(1, avance * 1.6);
+        g2d.setColor(new Color(255, 120, 0, Math.max(0, opacidad * 2 / 3)));
+        g2d.fill(new Ellipse2D.Double(dx - radio, dy - radio, radio * 2, radio * 2));
+        g2d.setColor(new Color(255, 240, 120, Math.max(0, opacidad)));
+        g2d.fill(new Ellipse2D.Double(dx - radio / 2, dy - radio / 2, radio, radio));
+
+        // Daño que sube
+        String danio = "-" + disparoAnimado.danio();
+        g2d.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.max(14, tamanoCelda / 2)));
+        FontMetrics medidas = g2d.getFontMetrics();
+        int tx = (int) (dx - medidas.stringWidth(danio) / 2.0);
+        int ty = (int) (dy - tamanoCelda * 0.2 - tamanoCelda * 0.6 * avance);
+        dibujarTextoConBorde(g2d, danio, tx, ty, new Color(255, 70, 50, Math.max(0, opacidad)));
+
+        if (disparoAnimado.hundimiento()) {
+            String hundido = "¡Hundido!";
+            g2d.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.max(13, tamanoCelda / 3)));
+            FontMetrics m = g2d.getFontMetrics();
+            dibujarTextoConBorde(g2d, hundido, (int) (dx - m.stringWidth(hundido) / 2.0),
+                    (int) (dy + tamanoCelda * 0.45), new Color(255, 230, 0, Math.max(0, opacidad)));
         }
     }
 
-    // Atajos de teclado 
+    /**
+     * Marca los disparos que recibió el jugador en el turno del rival: una línea punteada roja desde
+     * donde vino el tiro, una mira en ese lugar y, sobre el barco que recibió, un globo con el daño
+     * (o "hundido" si lo hundieron). Quedan durante todo el turno.
+     */
+    private void dibujarDisparosRecibidos(Graphics2D g2d, int tamanoCelda, int inicioX, int inicioY) {
+        if (modoDespliegue) {
+            return;
+        }
+        for (Disparo disparo : partidaTablero.getDisparosRecibidos()) {
+            double ox = centro(inicioX, disparo.origen().getColumna(), tamanoCelda);
+            double oy = centro(inicioY, disparo.origen().getFila(), tamanoCelda);
+            double dx = centro(inicioX, disparo.destino().getColumna(), tamanoCelda);
+            double dy = centro(inicioY, disparo.destino().getFila(), tamanoCelda);
+
+            g2d.setColor(new Color(255, 50, 50, 160));
+            g2d.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 10f, new float[] {6f, 5f}, 0f));
+            g2d.draw(new Line2D.Double(ox, oy, dx, dy));
+
+            // Mira en el lugar desde donde dispararon
+            double r = tamanoCelda * 0.18;
+            g2d.setStroke(new BasicStroke(2f));
+            g2d.draw(new Ellipse2D.Double(ox - r, oy - r, r * 2, r * 2));
+            g2d.draw(new Line2D.Double(ox - r * 1.4, oy, ox + r * 1.4, oy));
+            g2d.draw(new Line2D.Double(ox, oy - r * 1.4, ox, oy + r * 1.4));
+
+            // Globo con el daño, abajo al centro de la casilla que recibió (arriba de la barra de vida)
+            String texto = disparo.hundimiento() ? "hundido" : "-" + disparo.danio();
+            g2d.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.max(10, tamanoCelda / 5)));
+            FontMetrics medidas = g2d.getFontMetrics();
+            int ancho = medidas.stringWidth(texto) + 8;
+            int alto = medidas.getAscent() + 4;
+            int bx = inicioX + disparo.destino().getColumna() * tamanoCelda + (tamanoCelda - ancho) / 2;
+            int by = inicioY + (disparo.destino().getFila() + 1) * tamanoCelda - alto - Math.max(3, tamanoCelda / 12) - 5;
+            g2d.setColor(new Color(200, 20, 20, 230));
+            g2d.fillRoundRect(bx, by, ancho, alto, alto, alto);
+            g2d.setColor(Color.WHITE);
+            g2d.drawString(texto, bx + 4, by + medidas.getAscent() + 1);
+        }
+    }
+
+    /** Coordenada en píxeles del centro de la fila o columna {@code indice}. */
+    private static double centro(int inicio, int indice, int tamanoCelda) {
+        return inicio + indice * tamanoCelda + tamanoCelda / 2.0;
+    }
+
+    /** Texto con un borde oscuro alrededor, para que se lea sobre cualquier fondo. */
+    private static void dibujarTextoConBorde(Graphics2D g2d, String texto, int x, int y, Color color) {
+        g2d.setColor(new Color(0, 0, 0, color.getAlpha()));
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx != 0 || dy != 0) {
+                    g2d.drawString(texto, x + dx, y + dy);
+                }
+            }
+        }
+        g2d.setColor(color);
+        g2d.drawString(texto, x, y);
+    }
+
+    // Atajos de teclado
 
     /**
      * Registra los atajos con key bindings (InputMap + ActionMap) en lugar de KeyListener:
@@ -595,7 +887,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         JOptionPane.showMessageDialog(this, ex.getMessage(), "Acción no válida", JOptionPane.WARNING_MESSAGE);
     }
 
-    // Tooltip de barcos 
+    // Tooltip de barcos
 
     /**
      * Swing lo llama cuando el mouse se queda quieto sobre el panel. Si hay un barco
@@ -645,12 +937,39 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
             texto += " (enemigo)";
         }
         texto += "<br>Vida: " + barco.vida() + " / " + barco.vidaMaxima();
-        texto += "<br>Rango de disparo: " + barco.rangoDisparo();
+        texto += "<br>Rango de disparo: " + barco.rangoDisparo() + " · Visión: " + barco.vision();
+        texto += "<br><b>Habilidad:</b> " + descripcionHabilidad(barco.simbolo());
         if (barco.esPropio()) {
-            texto += "<br>Cooldown de disparo: " + barco.cooldownDisparo();
-            texto += "<br>Cooldown de habilidad: " + barco.cooldownHabilidad();
+            texto += "<br>" + estadoHabilidad(barco);
+            if (barco.cooldownDisparo() > 0) {
+                texto += "<br>Recargando el disparo: " + barco.cooldownDisparo() + " turno(s)";
+            }
         }
         return texto + "</html>";
+    }
+
+    /** Qué hace la habilidad de cada tipo de barco, para el tooltip. */
+    static String descripcionHabilidad(char simbolo) {
+        switch (simbolo) {
+            case 'A':
+                return "su rango de disparo sube a 8 en este turno.";
+            case 'C':
+                return "se repara 2 de vida.";
+            case 'D':
+                return "hace daño doble (6) en este turno.";
+            default:
+                return "-";
+        }
+    }
+
+    private static String estadoHabilidad(EstadoBarco barco) {
+        if (barco.habilidadActiva()) {
+            return "Habilidad activa este turno.";
+        }
+        if (barco.cooldownHabilidad() > 0) {
+            return "Habilidad en espera: " + barco.cooldownHabilidad() + " turno(s).";
+        }
+        return "Habilidad lista: tocá Usar habilidad (antes de disparar).";
     }
 
     /** Traduce el símbolo del barco al nombre de su tipo. */
@@ -708,7 +1027,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         return null;
     }
 
-    // Implementación de ObservadorPartida 
+    // Implementación de ObservadorPartida
 
     /**
      * La partida avisa que cambió algo (un movimiento, un disparo, una selección): se redibuja el tablero.
@@ -754,7 +1073,10 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
      * después de cargar una partida en un Thread aparte).
      */
     private void repintarEnEdt() {
-        SwingUtilities.invokeLater(() -> repaint());
+        SwingUtilities.invokeLater(() -> {
+            revisarDisparoNuevo();
+            repaint();
+        });
     }
 
     // Implementación de MouseListener

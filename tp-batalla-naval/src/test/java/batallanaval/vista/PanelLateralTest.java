@@ -69,6 +69,7 @@ class PanelLateralTest {
         PanelLateral panel = crearPanel();
 
         assertEquals("Ningún barco seleccionado", texto(panel, "etiquetaTipo"));
+        assertEquals("Elegí un barco para ver qué hace su habilidad.", texto(panel, "textoQueHaceHabilidad"));
         assertFalse(boton(panel, "Confirmar movimiento").isEnabled());
         assertFalse(boton(panel, "Deshacer paso").isEnabled());
         assertFalse(boton(panel, "Usar habilidad").isEnabled());
@@ -85,8 +86,10 @@ class PanelLateralTest {
         assertEquals("Acorazado (1,4)", texto(panel, "etiquetaTipo"));
         assertEquals("Vida: 6 / 8", texto(panel, "etiquetaVida"));
         assertEquals("Casillas restantes: 2", texto(panel, "etiquetaCasillas"));
-        assertEquals("Cooldown de disparo: 1", texto(panel, "etiquetaCooldownDisparo"));
+        assertEquals("Disparo: recargando (1 turno)", texto(panel, "etiquetaCooldownDisparo"));
         assertEquals("Habilidad: en espera (2 turnos)", texto(panel, "etiquetaHabilidad"));
+        assertTrue(texto(panel, "textoQueHaceHabilidad").startsWith("Acorazado: su rango de disparo sube a 8"),
+                "el cuadro explica qué hace la habilidad del barco elegido");
     }
 
     // Botones habilitados según el estado
@@ -388,6 +391,9 @@ class PanelLateralTest {
     private static String texto(Container panel, String nombre) {
         Component componente = buscarPorNombre(panel, nombre);
         assertNotNull(componente, "no está la etiqueta " + nombre);
+        if (componente instanceof javax.swing.text.JTextComponent cuadro) {
+            return cuadro.getText();
+        }
         return ((JLabel) componente).getText();
     }
 

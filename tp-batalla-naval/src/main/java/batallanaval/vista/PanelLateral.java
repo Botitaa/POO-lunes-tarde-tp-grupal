@@ -20,6 +20,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
 import batallanaval.controlador.EstadoBarco;
@@ -29,6 +30,7 @@ import batallanaval.controlador.ObservadorPartida;
 import batallanaval.controlador.Partida;
 import batallanaval.controlador.PartidaConsulta;
 import batallanaval.controlador.ResultadoPartida;
+import batallanaval.historial.EventoPartida;
 import batallanaval.modelo.Posicion;
 
 /**
@@ -91,6 +93,13 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
     private final JLabel etiquetaHabilidad = crearEtiqueta("etiquetaHabilidad");
     private final JLabel etiquetaRuta = crearEtiqueta("etiquetaRuta");
 
+    // Qué hace la habilidad del barco elegido (texto de solo lectura que corta las líneas solo)
+    private final JTextArea textoQueHaceHabilidad = crearCuadroDeTexto("textoQueHaceHabilidad");
+
+    // Guía para el jugador: qué puede hacer ahora y qué fue lo último que pasó
+    private final JLabel etiquetaAyuda = crearEtiqueta("etiquetaAyuda");
+    private final JLabel etiquetaUltimoAviso = crearEtiqueta("etiquetaUltimoAviso");
+
     // Acciones
     private final JButton botonConfirmarMovimiento = new JButton("Confirmar movimiento");
     private final JButton botonDeshacerPaso = new JButton("Deshacer paso");
@@ -118,9 +127,15 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         setPreferredSize(new Dimension(ANCHO, 0));
 
+        // Los botones van arriba, después de la ayuda: así "Terminar turno" se ve aunque
+        // la ventana sea baja (por ejemplo, en una notebook). El último aviso va al final.
         armarEncabezado();
-        armarFichaBarco();
+        armarAyuda();
         armarBotones();
+        armarQueHaceHabilidad();
+        armarFichaBarco();
+        armarUltimoAviso();
+        add(Box.createVerticalGlue());
         conectarBotones();
 
         refrescarTodo();
@@ -155,6 +170,8 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
             // Fuera del combate no se pregunta nada del turno: se muestra la ficha vacía y todo bloqueado.
             mostrarFichaVacia();
             etiquetaRuta.setText(" ");
+            etiquetaAyuda.setText(" ");
+            etiquetaUltimoAviso.setText(" ");
             modeloObjetivos.removeAllElements();
             deshabilitarTodo();
             return;
@@ -167,6 +184,8 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         actualizarFicha(seleccionado);
         actualizarRuta(ruta);
         actualizarObjetivos(objetivos);
+        etiquetaAyuda.setText(enHtml(textoAyuda(partida)));
+        etiquetaUltimoAviso.setText(enHtml(textoUltimoAviso(partida.getHistorialVisible())));
 
         boolean hayBarco = seleccionado != null;
         boolean hayRuta = hayBarco && !ruta.isEmpty();
@@ -234,6 +253,20 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         agregarAlineado(dominacion);
     }
 
+    private void armarAyuda() {
+        JPanel ayuda = crearSeccion("Qué podés hacer");
+        etiquetaAyuda.setForeground(new Color(20, 70, 160));
+        etiquetaAyuda.setFont(etiquetaAyuda.getFont().deriveFont(Font.BOLD));
+        ayuda.add(etiquetaAyuda);
+        agregarConAltoFijo(ayuda, 72);
+    }
+
+    private void armarUltimoAviso() {
+        JPanel aviso = crearSeccion("Último aviso");
+        aviso.add(etiquetaUltimoAviso);
+        agregarConAltoFijo(aviso, 85);
+    }
+
     private void armarFichaBarco() {
         JPanel ficha = crearSeccion("Barco seleccionado");
         ficha.add(etiquetaTipo);
@@ -243,6 +276,25 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         ficha.add(etiquetaHabilidad);
         ficha.add(etiquetaRuta);
         agregarAlineado(ficha);
+    }
+
+    private void armarQueHaceHabilidad() {
+        JPanel seccion = crearSeccion("Qué hace la habilidad");
+        seccion.add(textoQueHaceHabilidad);
+        agregarConAltoFijo(seccion, 62);
+    }
+
+    /** Cuadro de texto de solo lectura, con el fondo del panel y corte de línea por palabras. */
+    private static JTextArea crearCuadroDeTexto(String nombre) {
+        JTextArea area = new JTextArea(" ");
+        area.setName(nombre);
+        area.setEditable(false);
+        area.setFocusable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setOpaque(false);
+        area.setFont(new JLabel().getFont());
+        return area;
     }
 
     private void armarBotones() {
@@ -256,7 +308,6 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         acciones.add(botonDisparar);
         acciones.add(botonTerminarTurno);
         agregarAlineado(acciones);
-        add(Box.createVerticalGlue());
     }
 
     /**
@@ -318,8 +369,11 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         etiquetaTipo.setText(nombreTipo(barco.simbolo()) + " " + barco.posicion());
         etiquetaVida.setText("Vida: " + barco.vida() + " / " + barco.vidaMaxima());
         etiquetaCasillas.setText("Casillas restantes: " + barco.casillasRestantes());
-        etiquetaCooldownDisparo.setText("Cooldown de disparo: " + barco.cooldownDisparo());
+        etiquetaCooldownDisparo.setText("Disparo: " + textoDisparo(barco));
         etiquetaHabilidad.setText("Habilidad: " + textoHabilidad(barco));
+        textoQueHaceHabilidad.setText(nombreTipo(barco.simbolo()) + ": "
+                + PanelTablero.descripcionHabilidad(barco.simbolo())
+                + " Se usa con el botón Usar habilidad, antes de disparar.");
     }
 
     private void mostrarFichaVacia() {
@@ -328,6 +382,7 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         etiquetaCasillas.setText(" ");
         etiquetaCooldownDisparo.setText(" ");
         etiquetaHabilidad.setText(" ");
+        textoQueHaceHabilidad.setText("Elegí un barco para ver qué hace su habilidad.");
     }
 
     private void actualizarRuta(List<Posicion> ruta) {
@@ -383,6 +438,65 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         return "disponible";
     }
 
+    private static String textoDisparo(EstadoBarco barco) {
+        if (barco.cooldownDisparo() > 0) {
+            return "recargando (" + barco.cooldownDisparo() + (barco.cooldownDisparo() == 1 ? " turno)" : " turnos)");
+        }
+        return "rango " + barco.rangoDisparo();
+    }
+
+    /**
+     * Qué puede hacer el jugador en este momento, en una o dos frases. Se arma solo con lo que
+     * responde la partida (barco elegido, ruta, casillas alcanzables y objetivos válidos).
+     * Es de paquete para poder testearlo sin armar la ventana.
+     */
+    static String textoAyuda(Partida partida) {
+        EstadoBarco seleccionado = partida.getBarcoSeleccionado();
+        if (seleccionado == null) {
+            if (partida.getJugadorActivo().puntosMovimiento() == 0) {
+                return "Ya no te quedan puntos de movimiento. Elegí un barco para disparar o tocá Terminar turno.";
+            }
+            return "Hacé clic en uno de tus barcos para moverlo o disparar. Cuando termines, tocá Terminar turno.";
+        }
+        if (!partida.getRutaPlanificada().isEmpty()) {
+            return "Apretá Enter (o Confirmar movimiento) para mover. Backspace deshace el último paso.";
+        }
+        boolean puedeDisparar = !partida.getObjetivosValidos().isEmpty();
+        boolean puedeMoverse = !partida.getCasillasAlcanzables().isEmpty();
+        if (puedeDisparar && puedeMoverse) {
+            return "Clic en una casilla sombreada para armar la ruta, o clic en un enemigo marcado en rojo para dispararle.";
+        }
+        if (puedeDisparar) {
+            return "Clic en un enemigo marcado en rojo (o elegilo en la lista y tocá Disparar).";
+        }
+        String porQueNoDispara;
+        if (seleccionado.cooldownDisparo() > 0) {
+            porQueNoDispara = "Este barco está recargando.";
+        } else if (partida.getBarcosEnemigosVisibles().isEmpty()) {
+            porQueNoDispara = "No ves ningún enemigo.";
+        } else {
+            porQueNoDispara = "Los enemigos que ves están fuera de su rango o detrás de una isla.";
+        }
+        if (puedeMoverse) {
+            return porQueNoDispara + " Clic en una casilla sombreada para acercarte.";
+        }
+        return "Este barco ya no puede moverse ni disparar en este turno. Elegí otro o tocá Terminar turno.";
+    }
+
+    /** El último evento que este jugador puede ver, o un texto vacío si todavía no pasó nada. */
+    static String textoUltimoAviso(List<EventoPartida> historial) {
+        if (historial == null || historial.isEmpty()) {
+            return "Todavía no pasó nada.";
+        }
+        return historial.get(historial.size() - 1).descripcion();
+    }
+
+    /** Envuelve el texto en HTML con un ancho fijo para que el JLabel lo parta en renglones. */
+    private static String enHtml(String texto) {
+        String seguro = texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        return "<html><div style='width:" + (ANCHO - 95) + "px'>" + seguro + "</div></html>";
+    }
+
     private static String textoObjetivo(EstadoBarco objetivo) {
         return nombreTipo(objetivo.simbolo()) + " " + objetivo.posicion()
                 + " - vida " + objetivo.vida() + "/" + objetivo.vidaMaxima();
@@ -422,6 +536,16 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         JPanel seccion = new JPanel(new GridLayout(0, 1, 0, 2));
         seccion.setBorder(BorderFactory.createTitledBorder(titulo));
         return seccion;
+    }
+
+    /** Como {@link #agregarAlineado}, pero con un alto fijo para que el panel no salte al cambiar el texto. */
+    private void agregarConAltoFijo(JComponent componente, int alto) {
+        componente.setAlignmentX(Component.LEFT_ALIGNMENT);
+        Dimension tamanio = new Dimension(Integer.MAX_VALUE, alto);
+        componente.setPreferredSize(new Dimension(ANCHO, alto));
+        componente.setMaximumSize(tamanio);
+        add(componente);
+        add(Box.createVerticalStrut(8));
     }
 
     /** Agrega el componente alineado a la izquierda, con un poco de aire abajo (BoxLayout). */

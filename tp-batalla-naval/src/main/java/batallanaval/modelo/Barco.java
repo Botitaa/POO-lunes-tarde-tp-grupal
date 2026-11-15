@@ -181,7 +181,9 @@ public abstract class Barco {
      * decrementa cooldowns pendientes, rehabilita el movimiento y desactiva la habilidad temporal.
      */
     public void reiniciarTurno() {
-        if (cooldownDisparo > 0) {
+        // Si disparó en el turno que termina, la espera empieza a contar desde el turno siguiente:
+        // así el acorazado ("espera 1 turno") saltea de verdad un turno sin disparar.
+        if (cooldownDisparo > 0 && !yaDisparo) {
             cooldownDisparo--;
         }
         if (cooldownHabilidad > 0) {
