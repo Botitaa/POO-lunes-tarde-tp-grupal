@@ -20,6 +20,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
 import batallanaval.controlador.EstadoBarco;
@@ -92,6 +93,9 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
     private final JLabel etiquetaHabilidad = crearEtiqueta("etiquetaHabilidad");
     private final JLabel etiquetaRuta = crearEtiqueta("etiquetaRuta");
 
+    // Qué hace la habilidad del barco elegido (texto de solo lectura que corta las líneas solo)
+    private final JTextArea textoQueHaceHabilidad = crearCuadroDeTexto("textoQueHaceHabilidad");
+
     // Guía para el jugador: qué puede hacer ahora y qué fue lo último que pasó
     private final JLabel etiquetaAyuda = crearEtiqueta("etiquetaAyuda");
     private final JLabel etiquetaUltimoAviso = crearEtiqueta("etiquetaUltimoAviso");
@@ -128,6 +132,7 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         armarEncabezado();
         armarAyuda();
         armarBotones();
+        armarQueHaceHabilidad();
         armarFichaBarco();
         armarUltimoAviso();
         add(Box.createVerticalGlue());
@@ -253,7 +258,7 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         etiquetaAyuda.setForeground(new Color(20, 70, 160));
         etiquetaAyuda.setFont(etiquetaAyuda.getFont().deriveFont(Font.BOLD));
         ayuda.add(etiquetaAyuda);
-        agregarConAltoFijo(ayuda, 85);
+        agregarConAltoFijo(ayuda, 72);
     }
 
     private void armarUltimoAviso() {
@@ -271,6 +276,25 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         ficha.add(etiquetaHabilidad);
         ficha.add(etiquetaRuta);
         agregarAlineado(ficha);
+    }
+
+    private void armarQueHaceHabilidad() {
+        JPanel seccion = crearSeccion("Qué hace la habilidad");
+        seccion.add(textoQueHaceHabilidad);
+        agregarConAltoFijo(seccion, 62);
+    }
+
+    /** Cuadro de texto de solo lectura, con el fondo del panel y corte de línea por palabras. */
+    private static JTextArea crearCuadroDeTexto(String nombre) {
+        JTextArea area = new JTextArea(" ");
+        area.setName(nombre);
+        area.setEditable(false);
+        area.setFocusable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setOpaque(false);
+        area.setFont(new JLabel().getFont());
+        return area;
     }
 
     private void armarBotones() {
@@ -347,6 +371,9 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         etiquetaCasillas.setText("Casillas restantes: " + barco.casillasRestantes());
         etiquetaCooldownDisparo.setText("Disparo: " + textoDisparo(barco));
         etiquetaHabilidad.setText("Habilidad: " + textoHabilidad(barco));
+        textoQueHaceHabilidad.setText(nombreTipo(barco.simbolo()) + ": "
+                + PanelTablero.descripcionHabilidad(barco.simbolo())
+                + " Se usa con el botón Usar habilidad, antes de disparar.");
     }
 
     private void mostrarFichaVacia() {
@@ -355,6 +382,7 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         etiquetaCasillas.setText(" ");
         etiquetaCooldownDisparo.setText(" ");
         etiquetaHabilidad.setText(" ");
+        textoQueHaceHabilidad.setText("Elegí un barco para ver qué hace su habilidad.");
     }
 
     private void actualizarRuta(List<Posicion> ruta) {

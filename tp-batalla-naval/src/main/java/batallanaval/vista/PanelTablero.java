@@ -263,6 +263,14 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         // El barco seleccionado lleva un borde amarillo, arriba de su dibujo
         dibujarBarcoSeleccionado(g2d, tamanoCelda, inicioX, inicioY);
 
+        // Los barcos propios con la habilidad activa llevan un contorno celeste (adentro del amarillo)
+        for (EstadoBarco barco : partidaTablero.getBarcosPropios()) {
+            if (barco.habilidadActiva() && barco.posicion() != null) {
+                dibujarContornoHabilidad(g2d, inicioX + barco.posicion().getColumna() * tamanoCelda,
+                        inicioY + barco.posicion().getFila() * tamanoCelda, tamanoCelda);
+            }
+        }
+
         // La zona de dominación y el hover se dibujan después del for: si se dibujaran
         // adentro, las celdas siguientes les pintarían el borde negro encima.
 
@@ -413,6 +421,22 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
         g2d.drawString(texto, xTexto + 1, yTexto + 1);
         g2d.setColor(new Color(255, 255, 255, 200));
         g2d.drawString(texto, xTexto, yTexto);
+    }
+
+    /**
+     * Contorno que indica que el barco tiene la habilidad activa en este turno: un halo celeste
+     * ancho y semitransparente, y encima un borde celeste fuerte.
+     */
+    private static void dibujarContornoHabilidad(Graphics2D g2d, int x, int y, int tamanoCelda) {
+        int arco = tamanoCelda / 4;
+        int margen = Math.max(7, tamanoCelda / 9);
+        int lado = tamanoCelda - 2 * margen;
+        g2d.setColor(new Color(0, 230, 255, 110));
+        g2d.setStroke(new BasicStroke(Math.max(7f, tamanoCelda / 8f)));
+        g2d.drawRoundRect(x + margen, y + margen, lado, lado, arco, arco);
+        g2d.setColor(new Color(0, 240, 255));
+        g2d.setStroke(new BasicStroke(Math.max(3f, tamanoCelda / 18f)));
+        g2d.drawRoundRect(x + margen, y + margen, lado, lado, arco, arco);
     }
 
     /** Ancho del casco, en proporción a la celda: cuanto más grande el barco, más ancho. */
