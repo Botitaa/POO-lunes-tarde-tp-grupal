@@ -15,4 +15,6 @@ Thumbs.db
 datos/
 *.log
 *.sav
+# ...salvo las partidas de prueba de la prueba manual guiada (docs/prueba-manual.md)
+!docs/prueba-manual/partidas/*.sav
 *.sav.tmp

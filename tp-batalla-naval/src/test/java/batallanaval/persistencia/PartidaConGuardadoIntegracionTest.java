@@ -121,7 +121,7 @@ class PartidaConGuardadoIntegracionTest {
 
     private static GestorPartida guardarYCargar(GestorPartida partida) throws IOException, PersistenciaException {
         RepositorioPartidasArchivo repositorio = repositorioTemporal();
-        repositorio.guardar(partida, NOMBRE);
+        repositorio.guardar(partida.crearInstantanea(), NOMBRE);
         return repositorio.cargar(NOMBRE);
     }
 
@@ -210,11 +210,11 @@ class PartidaConGuardadoIntegracionTest {
         RepositorioPartidasArchivo repositorio = repositorioTemporal();
         GestorPartida partida = jugarPrimeraMitad();
 
-        repositorio.guardar(partida, NOMBRE);
+        repositorio.guardar(partida.crearInstantanea(), NOMBRE);
         partida = repositorio.cargar(NOMBRE);
         dispararConTodo(partida);
         pasarRonda(partida);
-        repositorio.guardar(partida, NOMBRE); // pisa el guardado anterior
+        repositorio.guardar(partida.crearInstantanea(), NOMBRE); // pisa el guardado anterior
         partida = repositorio.cargar(NOMBRE);
 
         assertEquals(4, partida.getRonda());
@@ -226,13 +226,13 @@ class PartidaConGuardadoIntegracionTest {
     // ---------- cuándo no se puede guardar ----------
 
     @Test
-    void aMitadDeTurnoNoSeGuarda() throws Exception {
-        RepositorioPartidasArchivo repositorio = repositorioTemporal();
+    void aMitadDeTurnoLaPartidaDiceQueNoSePuedeGuardar() throws Exception {
+        // El repositorio recibe solo la instantánea, que no sabe si el turno está a medias: esa
+        // regla la responde la partida y la chequea AccionGuardarPartida antes de armar la copia.
         GestorPartida partida = partidaDesplegada();
         mover(partida, 4, p(3, 0));
 
-        assertThrows(PersistenciaException.class, () -> repositorio.guardar(partida, NOMBRE));
-        assertFalse(repositorio.existe(NOMBRE));
+        assertFalse(partida.puedeGuardarse());
     }
 
     @Test
@@ -241,7 +241,7 @@ class PartidaConGuardadoIntegracionTest {
         GestorPartida partida = jugarPrimeraMitad();
         jugarHastaElFin(partida);
 
-        assertThrows(PersistenciaException.class, () -> repositorio.guardar(partida, NOMBRE));
+        assertThrows(PersistenciaException.class, () -> repositorio.guardar(partida.crearInstantanea(), NOMBRE));
     }
 
     private static List<Integer> ids(List<EstadoBarco> barcos) {

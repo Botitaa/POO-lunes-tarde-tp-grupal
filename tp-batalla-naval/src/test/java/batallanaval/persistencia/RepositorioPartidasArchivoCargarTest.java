@@ -85,7 +85,7 @@ public class RepositorioPartidasArchivoCargarTest {
         RepositorioPartidasArchivo repo = new RepositorioPartidasArchivo(tempDir);
         GestorPartida partidaOriginal = crearPartidaEnJuegoValida();
 
-        repo.guardar(partidaOriginal, "partida1");
+        repo.guardar(partidaOriginal.crearInstantanea(), "partida1");
         GestorPartida partidaCargada = repo.cargar("partida1");
 
         assertEquals(partidaOriginal.crearInstantanea(), partidaCargada.crearInstantanea());

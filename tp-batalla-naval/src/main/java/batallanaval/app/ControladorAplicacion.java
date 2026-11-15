@@ -23,6 +23,7 @@ import batallanaval.vista.AccionGuardarPartida;
 import batallanaval.vista.BarraMenuJuego;
 import batallanaval.vista.PanelBlackout;
 import batallanaval.vista.PanelCargarPartida;
+import batallanaval.vista.PanelDespliegue;
 import batallanaval.vista.PanelEstadisticas;
 import batallanaval.vista.PanelFinPartida;
 import batallanaval.vista.PanelInicio;
@@ -87,7 +88,7 @@ public final class ControladorAplicacion implements ObservadorPartida {
     private GestorPartida partida;
     private PanelJuego panelJuego;
     private PanelResumen panelResumen;
-    private PanelDespliegueTemporal panelDespliegue;
+    private PanelDespliegue panelDespliegue;
 
     /** Arma la aplicación con la ventana y los repositorios reales (archivos en {@code datos/}). */
     public ControladorAplicacion() {
@@ -123,8 +124,11 @@ public final class ControladorAplicacion implements ObservadorPartida {
         this.repositorioPartidas = Objects.requireNonNull(repositorioPartidas, "repositorioPartidas");
         this.repositorioEstadisticas = Objects.requireNonNull(repositorioEstadisticas, "repositorioEstadisticas");
 
+        // Guardar corre en un hilo propio (TareaGuardar): mientras tanto se bloquean los botones del
+        // blackout y se liberan al terminar, salga bien o mal.
         accionGuardar = new AccionGuardarPartida(repositorioPartidas, () -> partida,
-                ventana::mostrarError, ventana::mostrarMensaje);
+                ventana::mostrarError, ventana::mostrarMensaje,
+                this::bloquearBotonesDelBlackout, this::liberarBotonesDelBlackout);
         barraMenu = new BarraMenuJuego(accionGuardar, () -> ventana.mostrar(Pantalla.CARGAR),
                 this::abandonar, () -> ventana.mostrar(Pantalla.REGLAS));
         panelBlackout = new PanelBlackout(this::alTocarListo, accionGuardar);
@@ -204,13 +208,14 @@ public final class ControladorAplicacion implements ObservadorPartida {
 
         panelJuego = new PanelJuego(nueva, ventana::mostrarError);
         panelResumen = new PanelResumen(nueva, () -> ventana.mostrar(Pantalla.JUEGO));
-        panelDespliegue = new PanelDespliegueTemporal(nueva, ventana::mostrarError);
+        panelDespliegue = new PanelDespliegue(nueva, ventana::mostrarError);
         reemplazar(contenedorJuego, panelJuego);
         reemplazar(contenedorResumen, panelResumen);
         reemplazar(contenedorDespliegue, panelDespliegue);
 
         nueva.agregarObservador(this);
         nueva.agregarObservador(panelJuego);
+        nueva.agregarObservador(panelDespliegue);
         nueva.agregarObservador(barraMenu);
         // TEMPORAL (#80): nueva.agregarObservador(new AutoGuardado(...)) cuando Faccio lo suba.
         barraMenu.mostrarPartida(nueva);
@@ -221,10 +226,23 @@ public final class ControladorAplicacion implements ObservadorPartida {
         if (partida != null) {
             partida.quitarObservador(this);
             partida.quitarObservador(panelJuego);
+            partida.quitarObservador(panelDespliegue);
             partida.quitarObservador(barraMenu);
         }
         partida = null;
         barraMenu.mostrarPartida(null);
+    }
+
+    // ---------- guardado en un hilo propio ----------
+
+    /** Se ejecuta en el EDT justo antes de lanzar el hilo que guarda: no se puede tocar nada mientras tanto. */
+    private void bloquearBotonesDelBlackout() {
+        panelBlackout.setBotonesHabilitados(false);
+    }
+
+    /** Se ejecuta en el EDT cuando el hilo que guarda terminó (bien o mal). */
+    private void liberarBotonesDelBlackout() {
+        panelBlackout.setBotonesHabilitados(true);
     }
 
     // ---------- cambio de pantallas durante la partida ----------
