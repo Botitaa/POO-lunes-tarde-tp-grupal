@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import batallanaval.controlador.GestorPartida;
+import batallanaval.controlador.InstantaneaPartida;
 import batallanaval.excepciones.PersistenciaException;
 import batallanaval.persistencia.CabeceraGuardado;
 import batallanaval.persistencia.RepositorioPartidas;
@@ -22,7 +23,7 @@ class RepositorioPartidasFalso implements RepositorioPartidas {
     final List<String> nombresGuardados = new ArrayList<>();
     final List<String> nombresCargados = new ArrayList<>();
     final List<String> nombresBorrados = new ArrayList<>();
-    GestorPartida ultimaPartidaGuardada;
+    InstantaneaPartida ultimaInstantaneaGuardada;
 
     private void fallarSiCorresponde() throws PersistenciaException {
         if (error != null) {
@@ -31,9 +32,9 @@ class RepositorioPartidasFalso implements RepositorioPartidas {
     }
 
     @Override
-    public void guardar(GestorPartida partida, String nombre) throws PersistenciaException {
+    public void guardar(InstantaneaPartida instantanea, String nombre) throws PersistenciaException {
         fallarSiCorresponde();
-        ultimaPartidaGuardada = partida;
+        ultimaInstantaneaGuardada = instantanea;
         nombresGuardados.add(nombre);
     }
 
