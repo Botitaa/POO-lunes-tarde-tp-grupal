@@ -1,6 +1,7 @@
 package batallanaval.app;
 
 import batallanaval.controlador.GestorPartida;
+import batallanaval.controlador.InstantaneaPartida;
 import batallanaval.excepciones.PersistenciaException;
 import batallanaval.modelo.Barco;
 import batallanaval.modelo.FabricaFlota;
@@ -89,7 +90,7 @@ class AutoGuardadoTest {
 
         RepositorioPartidas repositorioQueFalla = new RepositorioPartidas() {
             @Override
-            public void guardar(GestorPartida p, String nombre) throws PersistenciaException {
+            public void guardar(InstantaneaPartida p, String nombre) throws PersistenciaException {
                 throw new PersistenciaException("Error al escribir autoguardado.sav");
             }
 

@@ -73,7 +73,7 @@ public class AutoGuardado implements ObservadorPartida {
         }
 
         try {
-            repositorio.guardar(partida, NOMBRE_ARCHIVO);
+            repositorio.guardar(partida.crearInstantanea(), NOMBRE_ARCHIVO);
         } catch (PersistenciaException e) {
             alError.accept(e.getMessage());
         }
