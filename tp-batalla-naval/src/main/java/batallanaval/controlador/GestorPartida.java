@@ -32,6 +32,7 @@ public class GestorPartida implements Partida {
     private List<Posicion> rutaPlanificada;
     private ResultadoPartida resultado;
     private boolean accionRealizadaEnTurno;
+    private Disparo ultimoDisparo;
 
     /**
      * Construye una nueva partida con los dos jugadores y el tablero de juego.
@@ -124,6 +125,24 @@ public class GestorPartida implements Partida {
 
     }
 
+    private static String nombreTipo(Barco barco) {
+        return switch (barco.getSimbolo()) {
+            case 'A' -> "Acorazado";
+            case 'C' -> "Crucero";
+            case 'D' -> "Destructor";
+            default -> "barco";
+        };
+    }
+
+    private static String efectoHabilidad(Barco barco) {
+        return switch (barco.getSimbolo()) {
+            case 'A' -> "rango 8 este turno";
+            case 'C' -> "se reparó (vida " + barco.getVida() + "/" + barco.getVidaMaxima() + ")";
+            case 'D' -> "daño doble este turno";
+            default -> "activada";
+        };
+    }
+
     private void notificarCambio() {
         for (ObservadorPartida observador : observadores) {
             observador.onEstadoCambiado();
@@ -161,6 +180,7 @@ public class GestorPartida implements Partida {
 
         jugadorActivo.reponerPuntos(PUNTOS_MOVIMIENTO_TURNO);
         accionRealizadaEnTurno = false;
+        ultimoDisparo = null;
 
         for (Barco barcoVivo: jugadorActivo.getBarcosVivos()){
             barcoVivo.reiniciarTurno();
@@ -174,7 +194,8 @@ public class GestorPartida implements Partida {
 
         if(tieneBarcosEnDominacion(jugadorActivo) && !tieneBarcosEnDominacion(rival())){
             jugadorActivo.sumarPuntoDominacion();
-            registrarEvento(TipoEvento.DOMINACION, jugadorActivo.getNombre() + " sumó un punto de dominación");
+            registrarEvento(TipoEvento.DOMINACION, jugadorActivo.getNombre() + " sumó un punto de dominación ("
+                    + jugadorActivo.getPuntosDominacion() + " de " + PUNTOS_DOMINACION_VICTORIA + ")");
         }
 
     }
@@ -221,7 +242,9 @@ public class GestorPartida implements Partida {
 
         fase = FasePartida.TERMINADA;
         resultado = new ResultadoPartida(LocalDateTime.now(), jugador1.getNombre(), jugador2.getNombre(), ganador == null ? null : ganador.getNombre(), ronda, motivoFin);
-        registrarEvento(TipoEvento.FIN_PARTIDA, "Partida terminada");
+        registrarEvento(TipoEvento.FIN_PARTIDA, ganador == null
+                ? "Partida terminada: empate"
+                : "Partida terminada: ganó " + ganador.getNombre());
         notificarFaseCambiada();
         notificarPartidaTerminada();
     }
@@ -261,7 +284,7 @@ public class GestorPartida implements Partida {
         }
 
         barcoJugador.ubicarEn(destino);
-        registrarEvento(TipoEvento.DESPLIEGUE, "Ubicó " + barcoJugador.getSimbolo() + " en " + destino);
+        registrarEvento(TipoEvento.DESPLIEGUE, "Ubicaste tu " + nombreTipo(barcoJugador) + " en " + destino);
         notificarCambio();
 
     }
@@ -282,7 +305,7 @@ public class GestorPartida implements Partida {
         }
 
         barco.ubicarEn(null);
-        registrarEvento(TipoEvento.DESPLIEGUE, "retiro " + barco.getSimbolo() + " de " + origen);
+        registrarEvento(TipoEvento.DESPLIEGUE, "Retiraste tu " + nombreTipo(barco) + " de " + origen);
         notificarCambio();
     }
 
@@ -292,9 +315,9 @@ public class GestorPartida implements Partida {
         List<EstadoBarco> listaBarcosSinUbicar = new ArrayList<>();
 
         for(Barco barco: jugadorActivo.getFlota()){
-             if (barco.getPosicion() == null){
-                 listaBarcosSinUbicar.add(aEstadoBarco(barco,jugadorActivo.getNumero(),true));
-             }
+            if (barco.getPosicion() == null){
+                listaBarcosSinUbicar.add(aEstadoBarco(barco,jugadorActivo.getNumero(),true));
+            }
         }
 
         return List.copyOf(listaBarcosSinUbicar);
@@ -311,7 +334,7 @@ public class GestorPartida implements Partida {
         if (fase == FasePartida.DESPLIEGUE_J1){
             //jugador1 -> jugador 2
             fase = FasePartida.DESPLIEGUE_J2;
-            registrarEvento(TipoEvento.DESPLIEGUE, jugador1.getNombre() + " termino su despliegue");
+            registrarEvento(TipoEvento.DESPLIEGUE, jugador1.getNombre() + " terminó su despliegue");
             jugadorActivo = jugador2;
 
 
@@ -319,7 +342,7 @@ public class GestorPartida implements Partida {
         } else if (fase == FasePartida.DESPLIEGUE_J2) {
             //jugador2 -> jugador1 arranca a jugar
             fase = FasePartida.EN_JUEGO;
-            registrarEvento(TipoEvento.DESPLIEGUE, jugador2.getNombre() + " termino su despliegue");
+            registrarEvento(TipoEvento.DESPLIEGUE, jugador2.getNombre() + " terminó su despliegue");
             jugadorActivo = jugador1;
             jugadorActivo.reponerPuntos(PUNTOS_MOVIMIENTO_TURNO);
         }
@@ -427,12 +450,14 @@ public class GestorPartida implements Partida {
             Posicion destino = rutaPlanificada.get(pasosHechos - 1);
             jugadorActivo.gastarPuntos(pasosHechos * barcoSeleccionado.getEstadisticas().costoMovimiento());
             barcoSeleccionado.moverA(destino, pasosHechos);
-            registrarEvento(TipoEvento.MOVIMIENTO, barcoSeleccionado.getSimbolo() + " " + origen + " -> " + destino);
+            registrarEvento(TipoEvento.MOVIMIENTO, "Tu " + nombreTipo(barcoSeleccionado) + " se movió de " + origen + " a " + destino
+                    + " (" + pasosHechos * barcoSeleccionado.getEstadisticas().costoMovimiento() + " puntos)");
         }
         if (enemigoOculto != null) {
             // Queda revelado hasta que termine este turno: iniciarTurno lo vuelve a ocultar.
             enemigoOculto.marcarRevelado(true);
-            registrarEvento(TipoEvento.MOVIMIENTO, "Se frenó: hay un barco enemigo en " + enemigoOculto.getPosicion());
+            registrarEvento(TipoEvento.MOVIMIENTO, "¡Frenaste! Había un " + nombreTipo(enemigoOculto)
+                    + " enemigo escondido en " + enemigoOculto.getPosicion() + ". Ahora lo ves.");
         }
 
         accionRealizadaEnTurno = true;
@@ -447,7 +472,8 @@ public class GestorPartida implements Partida {
             throw new HabilidadNoDisponibleException("Primero seleccioná un barco.");
         }
         barcoSeleccionado.usarHabilidad(); // si está en espera o ya activa, tira HabilidadNoDisponibleException
-        registrarEvento(TipoEvento.HABILIDAD, barcoSeleccionado.getSimbolo() + " en " + barcoSeleccionado.getPosicion() + " usó su habilidad");
+        registrarEvento(TipoEvento.HABILIDAD, "Tu " + nombreTipo(barcoSeleccionado) + " usó su habilidad: "
+                + efectoHabilidad(barcoSeleccionado));
         accionRealizadaEnTurno = true;
         notificarCambio();
     }
@@ -482,17 +508,21 @@ public class GestorPartida implements Partida {
 
         rival().getResumen().agregarDisparoRecibido(objetivo, danio, origen);
 
-        registrarEvento(TipoEvento.DISPARO, tirador.getSimbolo() + " " + origen + " -> " + objetivo.getSimbolo() + " " + posicionObjetivo + ", -" + danio);
+        registrarEvento(TipoEvento.DISPARO, nombreTipo(tirador) + " de " + jugadorActivo.getNombre() + " en " + origen
+                + " disparó al " + nombreTipo(objetivo) + " de " + rival().getNombre() + " en " + posicionObjetivo
+                + ": -" + danio + " de vida (le queda " + objetivo.getVida() + ")");
 
         accionRealizadaEnTurno = true;
 
         rutaPlanificada.clear(); // un barco que disparó ya no se mueve
+        ultimoDisparo = new Disparo(origen, posicionObjetivo, danio, objetivo.estaHundido());
 
         if (objetivo.estaHundido()) {
             tablero.convertirEnRestos(posicionObjetivo);
             rival().getResumen().agregarBarcoHundido(objetivo, posicionObjetivo);
 
-            registrarEvento(TipoEvento.HUNDIMIENTO, objetivo.getSimbolo() + " de " + rival().getNombre() + " hundido en " + posicionObjetivo);
+            registrarEvento(TipoEvento.HUNDIMIENTO, "¡Hundido! El " + nombreTipo(objetivo) + " de " + rival().getNombre()
+                    + " en " + posicionObjetivo + " se fue al fondo. Le quedan " + rival().getBarcosVivos().size() + " barcos.");
 
             if (!rival().tieneBarcosVivos()) {
                 terminarPartida(jugadorActivo, MotivoFin.HUNDIMIENTO);
@@ -508,7 +538,7 @@ public class GestorPartida implements Partida {
 
         cancelarSeleccion();
         actualizarDominacion();
-        registrarEvento(TipoEvento.FIN_TURNO, jugadorActivo.getNombre() + " termino su turno");
+        registrarEvento(TipoEvento.FIN_TURNO, jugadorActivo.getNombre() + " terminó su turno");
         jugadorActivo.getResumen().limpiar();
 
         if (jugadorActivo.getPuntosDominacion() >= PUNTOS_DOMINACION_VICTORIA) {
@@ -834,6 +864,11 @@ public class GestorPartida implements Partida {
     @Override
     public List<EstadoBarco> getBarcosEnemigosVisibles() {
         List<EstadoBarco> visibles = new ArrayList<>();
+        if (fase == FasePartida.DESPLIEGUE_J1 || fase == FasePartida.DESPLIEGUE_J2) {
+            // Mientras se despliega no se ve nada del rival: si no, el segundo jugador
+            // vería dónde puso sus barcos el primero
+            return List.of();
+        }
         for (Barco barco : rival().getBarcosVivos()) {
             if (esBarcoVisibleParaJugador(jugadorActivo, barco)) {
                 visibles.add(aEstadoBarco(barco, rival().getNumero(), false));
@@ -958,6 +993,27 @@ public class GestorPartida implements Partida {
         return esBarcoVisibleParaJugador(jugadorActivo, objetivo)
                 && tirador.estaEnRango(desde.distanciaChebyshev(hasta))
                 && tablero.hayLineaDeVision(desde, hasta);
+    }
+
+    @Override
+    public List<Disparo> getDisparosRecibidos() {
+        return jugadorActivo.getResumen().getDisparosRecibidos();
+    }
+
+    @Override
+    public Disparo getUltimoDisparo() {
+        return ultimoDisparo;
+    }
+
+    @Override
+    public boolean puedeActuar(int idBarco) {
+        Barco barco = jugadorActivo.getBarcoPorId(idBarco);
+        if (barco == null || barco.estaHundido() || fase != FasePartida.EN_JUEGO) {
+            return false;
+        }
+        boolean puedeMoverse = barco.puedeMoverse()
+                && jugadorActivo.getPuntosMovimiento() >= barco.getEstadisticas().costoMovimiento();
+        return puedeMoverse || barco.puedeDisparar();
     }
 
     @Override

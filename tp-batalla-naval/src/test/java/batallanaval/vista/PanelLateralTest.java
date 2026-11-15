@@ -85,7 +85,7 @@ class PanelLateralTest {
         assertEquals("Acorazado (1,4)", texto(panel, "etiquetaTipo"));
         assertEquals("Vida: 6 / 8", texto(panel, "etiquetaVida"));
         assertEquals("Casillas restantes: 2", texto(panel, "etiquetaCasillas"));
-        assertEquals("Cooldown de disparo: 1", texto(panel, "etiquetaCooldownDisparo"));
+        assertEquals("Disparo: recargando (1 turno)", texto(panel, "etiquetaCooldownDisparo"));
         assertEquals("Habilidad: en espera (2 turnos)", texto(panel, "etiquetaHabilidad"));
     }
 

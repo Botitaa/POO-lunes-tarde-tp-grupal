@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.io.Serial;
@@ -276,13 +275,13 @@ public final class PanelDespliegue extends JPanel implements ObservadorPartida {
 
         etiquetaProgreso.setFont(etiquetaProgreso.getFont().deriveFont(Font.BOLD));
         etiquetaSeleccion.setForeground(new Color(60, 60, 60));
-        JPanel botones = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
-        botones.add(botonRetirar);
-        botones.add(botonConfirmar);
+        // Cada botón en su propia fila: si van juntos en una fila y no entran a lo ancho, el
+        // segundo se pasa a una línea que la grilla no muestra y "Confirmar" desaparece.
         JPanel abajo = new JPanel(new GridLayout(0, 1, 0, 6));
         abajo.add(etiquetaProgreso);
         abajo.add(etiquetaSeleccion);
-        abajo.add(botones);
+        abajo.add(botonRetirar);
+        abajo.add(botonConfirmar);
         lateral.add(abajo, BorderLayout.SOUTH);
 
         listaSinUbicar.setName("listaSinUbicar");
