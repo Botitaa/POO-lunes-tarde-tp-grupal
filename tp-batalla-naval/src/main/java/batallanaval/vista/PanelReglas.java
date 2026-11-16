@@ -53,15 +53,15 @@ public final class PanelReglas extends PanelConHilo {
             Cada jugador tiene 1 Acorazado, 2 Cruceros y 3 Destructores. Cada barco ocupa 1 casilla.
             - Destructor: vida 3, daño 3, rango 2, visión 2. Se mueve hasta 4 casillas por turno y \
             cada casilla cuesta 1 punto. Dispara todos los turnos.
-            - Crucero: vida 5, daño 2, rango 4, visión 3. Se mueve hasta 3 casillas por turno y cada \
+            - Crucero: vida 5, daño 2, rango 3, visión 4. Se mueve hasta 3 casillas por turno y cada \
             casilla cuesta 2 puntos. Dispara todos los turnos.
-            - Acorazado: vida 8, daño 4, rango 6, visión 5. Se mueve hasta 2 casillas por turno y \
+            - Acorazado: vida 8, daño 4, rango 4, visión 5. Se mueve hasta 2 casillas por turno y \
             cada casilla cuesta 3 puntos. Después de disparar tiene que esperar 1 turno.
 
             HABILIDADES
             - Destructor: hace daño doble (6) en ese turno.
             - Crucero: se repara 2 puntos de vida, sin pasar de su vida máxima.
-            - Acorazado: su rango sube a 8 en ese turno.
+            - Acorazado: su rango sube a 6 en ese turno.
             Se activan con un botón, una vez por turno. No cuestan puntos de movimiento, no impiden \
             moverse y duran hasta el fin del turno. Después hay que esperar 3 turnos para volver a \
             usarlas (si se usa en el turno 1, vuelve a estar disponible en el 4). No revelan al \

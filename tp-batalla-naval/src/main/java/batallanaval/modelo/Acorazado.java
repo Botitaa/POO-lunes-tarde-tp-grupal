@@ -7,7 +7,7 @@ public class Acorazado extends Barco {
             8,
             2,
             3,
-            6,
+            4,
             5,
             1,
             4,
@@ -40,9 +40,9 @@ public class Acorazado extends Barco {
     @Override
     public int getRangoDisparo() {
         if (estaHabilidadActiva()) {
-            return 8;
+            return 6;
         }
-        return 6;
+        return 4;
     }
 
     @Override

@@ -117,9 +117,10 @@ class GestorPartidaDisparoTest {
 
     @Test
     void sinVisionNoSePuedeDispararAunqueEsteEnRango() {
-        // El crucero 8 en (7,0) está a 6 del acorazado (rango 6), pero el acorazado ve solo 5 y nadie más lo ve.
+        // El crucero 8 en (7,0) está a 6 del acorazado con habilidad (rango 6), pero el acorazado ve solo 5 y nadie más lo ve.
         GestorPartida partida = partida(con(sano(8, 'C', 2, 7, 0)));
         partida.seleccionarBarco(1);
+        partida.usarHabilidad();
 
         assertFalse(esObjetivo(partida, 8));
         assertThrows(DisparoInvalidoException.class, () -> partida.disparar(8));
@@ -127,10 +128,11 @@ class GestorPartidaDisparoTest {
 
     @Test
     void conVisionCompartidaSePuedeDispararAUnEnemigoQueOtroBarcoVe() {
-        // El crucero 8 de Beto en (5,1): el crucero 2 de Ana le llega (distancia 4, rango 4) pero no lo ve
-        // (visión 3). Lo ve el acorazado de Ana (visión 5), y con eso alcanza.
-        GestorPartida partida = partida(con(sano(8, 'C', 2, 5, 1)));
-        partida.seleccionarBarco(2);
+        // El crucero 8 de Beto en (7,0): el acorazado 1 de Ana con habilidad le llega (distancia 6, rango 6)
+        // pero no lo ve (visión 5). Lo ve el destructor 4 de Ana en (5,0), y con eso alcanza.
+        GestorPartida partida = partida(con(sano(4, 'D', 1, 5, 0), sano(8, 'C', 2, 7, 0)));
+        partida.seleccionarBarco(1);
+        partida.usarHabilidad();
 
         assertTrue(esObjetivo(partida, 8));
     }

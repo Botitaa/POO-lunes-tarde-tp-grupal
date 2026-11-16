@@ -7,8 +7,8 @@ public class Crucero extends Barco {
             5,
             3,
             2,
-            4,
             3,
+            4,
             0,
             2,
             3

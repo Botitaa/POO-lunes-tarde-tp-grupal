@@ -69,7 +69,7 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
     /** Milisegundos entre una actualización del marcador y la siguiente. */
     static final int INTERVALO_MS = 500;
 
-    private static final int ANCHO = 270;
+    private static final int ANCHO = 310;
     private static final String SIN_DATO = "-";
 
     // Usa tres de las cuatro interfaces (consulta, tablero y combate): por eso recibe la Partida entera.
@@ -97,8 +97,8 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
     private final JTextArea textoQueHaceHabilidad = crearCuadroDeTexto("textoQueHaceHabilidad");
 
     // Guía para el jugador: qué puede hacer ahora y qué fue lo último que pasó
-    private final JLabel etiquetaAyuda = crearEtiqueta("etiquetaAyuda");
-    private final JLabel etiquetaUltimoAviso = crearEtiqueta("etiquetaUltimoAviso");
+    private final JTextArea etiquetaAyuda = crearCuadroDeTexto("etiquetaAyuda");
+    private final JTextArea etiquetaUltimoAviso = crearCuadroDeTexto("etiquetaUltimoAviso");
 
     // Acciones
     private final JButton botonConfirmarMovimiento = new JButton("Confirmar movimiento");
@@ -184,8 +184,8 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         actualizarFicha(seleccionado);
         actualizarRuta(ruta);
         actualizarObjetivos(objetivos);
-        etiquetaAyuda.setText(enHtml(textoAyuda(partida)));
-        etiquetaUltimoAviso.setText(enHtml(textoUltimoAviso(partida.getHistorialVisible())));
+        etiquetaAyuda.setText(textoAyuda(partida));
+        etiquetaUltimoAviso.setText(textoUltimoAviso(partida.getHistorialVisible()));
 
         boolean hayBarco = seleccionado != null;
         boolean hayRuta = hayBarco && !ruta.isEmpty();
@@ -258,13 +258,13 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         etiquetaAyuda.setForeground(new Color(20, 70, 160));
         etiquetaAyuda.setFont(etiquetaAyuda.getFont().deriveFont(Font.BOLD));
         ayuda.add(etiquetaAyuda);
-        agregarConAltoFijo(ayuda, 72);
+        agregarConAltoFijo(ayuda, 105);
     }
 
     private void armarUltimoAviso() {
         JPanel aviso = crearSeccion("Último aviso");
         aviso.add(etiquetaUltimoAviso);
-        agregarConAltoFijo(aviso, 85);
+        agregarConAltoFijo(aviso, 95);
     }
 
     private void armarFichaBarco() {
@@ -281,7 +281,7 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
     private void armarQueHaceHabilidad() {
         JPanel seccion = crearSeccion("Qué hace la habilidad");
         seccion.add(textoQueHaceHabilidad);
-        agregarConAltoFijo(seccion, 62);
+        agregarConAltoFijo(seccion, 95);
     }
 
     /** Cuadro de texto de solo lectura, con el fondo del panel y corte de línea por palabras. */
@@ -298,7 +298,7 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
     }
 
     private void armarBotones() {
-        JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 6));
+        JPanel acciones = new JPanel(new GridLayout(0, 1, 0, 4));
         acciones.setBorder(BorderFactory.createTitledBorder("Acciones"));
         comboObjetivos.setName("comboObjetivos");
         acciones.add(botonConfirmarMovimiento);
@@ -491,12 +491,6 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         return historial.get(historial.size() - 1).descripcion();
     }
 
-    /** Envuelve el texto en HTML con un ancho fijo para que el JLabel lo parta en renglones. */
-    private static String enHtml(String texto) {
-        String seguro = texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-        return "<html><div style='width:" + (ANCHO - 95) + "px'>" + seguro + "</div></html>";
-    }
-
     private static String textoObjetivo(EstadoBarco objetivo) {
         return nombreTipo(objetivo.simbolo()) + " " + objetivo.posicion()
                 + " - vida " + objetivo.vida() + "/" + objetivo.vidaMaxima();
@@ -538,14 +532,15 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         return seccion;
     }
 
-    /** Como {@link #agregarAlineado}, pero con un alto fijo para que el panel no salte al cambiar el texto. */
+    /** Como {@link #agregarAlineado}, pero con un alto fijo para que el panel no salte ni achique el cuadro. */
     private void agregarConAltoFijo(JComponent componente, int alto) {
         componente.setAlignmentX(Component.LEFT_ALIGNMENT);
-        Dimension tamanio = new Dimension(Integer.MAX_VALUE, alto);
-        componente.setPreferredSize(new Dimension(ANCHO, alto));
-        componente.setMaximumSize(tamanio);
+        Dimension fijo = new Dimension(ANCHO, alto);
+        componente.setMinimumSize(fijo);
+        componente.setPreferredSize(fijo);
+        componente.setMaximumSize(new Dimension(Integer.MAX_VALUE, alto));
         add(componente);
-        add(Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(4));
     }
 
     /** Agrega el componente alineado a la izquierda, con un poco de aire abajo (BoxLayout). */
@@ -553,7 +548,7 @@ public final class PanelLateral extends PanelConHilo implements ObservadorPartid
         componente.setAlignmentX(Component.LEFT_ALIGNMENT);
         componente.setMaximumSize(new Dimension(Integer.MAX_VALUE, componente.getPreferredSize().height));
         add(componente);
-        add(Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(4));
     }
 
     /**
