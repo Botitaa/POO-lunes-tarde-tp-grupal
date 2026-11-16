@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Tests de disparo en GestorPartida (PAR-09, #54): objetivos válidos, daño, revelado del tirador,
  * resumen del rival, hundimiento y victoria por hundimiento.
  * <p>
- * Siempre juega Ana (J1). Su flota base está en la fila 1: acorazado 1 en (1,0) (rango 6, daño 4,
- * visión 5), cruceros 2 y 3 en (1,1) y (1,2) (rango 4, daño 2, visión 3), destructores 4, 5 y 6 en
+ * Siempre juega Ana (J1). Su flota base está en la fila 1: acorazado 1 en (1,0) (rango 4, daño 4,
+ * visión 5), cruceros 2 y 3 en (1,1) y (1,2) (rango 3, daño 2, visión 4), destructores 4, 5 y 6 en
  * (1,3), (1,4) y (1,5) (rango 2, daño 3, visión 2). La flota de Beto (J2, ids 7 a 12) está en la fila 9,
  * salvo los barcos que cada test acerca.
  */

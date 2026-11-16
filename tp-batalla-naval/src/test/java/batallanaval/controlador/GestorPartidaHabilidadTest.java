@@ -267,7 +267,7 @@ class GestorPartidaHabilidadTest {
     }
 
     @Test
-    void sinHabilidadElAcorazadoNoLlegaASiete() {
+    void sinHabilidadElAcorazadoNoLlegaACinco() {
         GestorPartida partida = partidaConObjetivoLejano();
         partida.seleccionarBarco(1);
 
@@ -275,7 +275,7 @@ class GestorPartidaHabilidadTest {
     }
 
     @Test
-    void conHabilidadElAcorazadoTiraARangoOcho() {
+    void conHabilidadElAcorazadoTiraARangoSeis() {
         GestorPartida partida = partidaConObjetivoLejano();
         partida.seleccionarBarco(1);
         partida.usarHabilidad();
@@ -286,7 +286,7 @@ class GestorPartidaHabilidadTest {
     }
 
     @Test
-    void elRangoDelAcorazadoVuelveASeisEnElTurnoSiguiente() {
+    void elRangoDelAcorazadoVuelveACuatroEnElTurnoSiguiente() {
         GestorPartida partida = partidaConObjetivoLejano();
         partida.seleccionarBarco(1);
         partida.usarHabilidad();

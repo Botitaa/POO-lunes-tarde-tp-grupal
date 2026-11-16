@@ -190,7 +190,7 @@ class ReglasDeJuegoTest {
 
     @Test
     void d14_enemigoEnZonaDeDominacionSeVeSiempreYSePuedeDispararSiEstaEnRango() {
-        // Acorazado J1 en (0,4): visión 5, rango 6. Enemigo en (5,5) dominación: dist 5
+        // Acorazado J1 en (0,4): visión 5, rango 4. Enemigo en (5,5) dominación: dist 5
         GestorPartida p = partida(mapa(), b(4, 'D', 1, 2, 9), b(10, 'D', 2, 5, 5));
         assertNotNull(enemigo(p, 10), "dominación: lo ven los dos");
         p.seleccionarBarco(4);
@@ -200,7 +200,7 @@ class ReglasDeJuegoTest {
     // ---------- habilidades ----------
 
     @Test
-    void h01_acorazadoConHabilidadDisparaARango8() {
+    void h01_acorazadoConHabilidadDisparaARango6() {
         GestorPartida p = partida(mapa(), b(1, 'A', 1, 0, 0), b(2, 'C', 1, 3, 0), b(10, 'D', 2, 6, 0));
         // dist acorazado-enemigo = 6; lo ve el crucero (dist 3)
         p.seleccionarBarco(1);
