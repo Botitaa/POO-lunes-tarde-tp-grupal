@@ -139,6 +139,24 @@ class PanelTableroTest {
         assertEquals("Barco", PanelTablero.nombreTipo('?'));
     }
 
+    @Test
+    void elTooltipMuestraDanioCostoYMovimientoDelBarco() {
+        partida.seleccionado = PartidaFalsa.crucero(1, new Posicion(2, 3));
+        partida.objetivos.add(PartidaFalsa.destructorEnemigo(8, new Posicion(5, 6), 2));
+
+        String tooltipPropio = panel.getToolTipText(
+                new MouseEvent(panel, MouseEvent.MOUSE_MOVED, 0L, 0, 3 * CELDA + CELDA / 2, 2 * CELDA + CELDA / 2, 0, false));
+        String tooltipEnemigo = panel.getToolTipText(
+                new MouseEvent(panel, MouseEvent.MOUSE_MOVED, 0L, 0, 6 * CELDA + CELDA / 2, 5 * CELDA + CELDA / 2, 0, false));
+
+        assertTrue(tooltipPropio.contains("Daño: 2"));
+        assertTrue(tooltipPropio.contains("Costo de movimiento: 2 ptos/casilla"));
+        assertTrue(tooltipPropio.contains("Casillas este turno: 3 / 3"));
+        assertTrue(tooltipEnemigo.contains("Daño: 3"));
+        assertTrue(tooltipEnemigo.contains("Costo de movimiento: 1 pto/casilla"));
+        assertTrue(tooltipEnemigo.contains("Movimiento máx.: 4 casillas/turno"));
+    }
+
     // Ayudas
 
     /** Partida falsa en la que el test decide si se ve o no el mapa. */

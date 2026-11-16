@@ -166,6 +166,7 @@ class GestorPartidaCompletaTest {
         mover(partida, 5, p(3, 1), p(4, 1), p(5, 1));
         pasarRonda(partida);
         mover(partida, 6, p(3, 9), p(4, 9), p(5, 9));
+        mover(partida, 1, p(3, 4));
         while (!partida.estaTerminada()) {
             dispararConTodo(partida);
             if (!partida.estaTerminada()) {

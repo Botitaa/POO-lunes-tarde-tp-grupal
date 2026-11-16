@@ -86,10 +86,10 @@ class ReglasDeJuegoTest {
 
     @Test
     void d02_noPuedeDispararFueraDeRango() {
-        // Crucero J1 (id 2) en (2,2): rango 4, visión 3. Enemigo a distancia 4 no se ve (visión 3) -> no es objetivo
+        // Crucero J1 (id 2) en (2,2): rango 3, visión 4. Enemigo a distancia 4 se ve (visión 4) pero queda fuera de rango (rango 3)
         GestorPartida p = partida(mapa(), b(2, 'C', 1, 2, 2), b(10, 'D', 2, 6, 2));
         p.seleccionarBarco(2);
-        assertTrue(p.getObjetivosValidos().isEmpty(), "a distancia 4 un crucero no lo ve (visión 3)");
+        assertTrue(p.getObjetivosValidos().isEmpty(), "a distancia 4 un crucero lo ve (visión 4) pero no tiene rango (rango 3)");
         assertThrows(DisparoInvalidoException.class, () -> p.disparar(10));
     }
 
@@ -101,15 +101,16 @@ class ReglasDeJuegoTest {
         assertNotNull(enemigo(p, 10), "el acorazado lo ve");
         assertTrue(p.getObjetivosValidos().isEmpty());
         p.seleccionarBarco(1);
-        assertEquals(Set.of(10), ids(p.getObjetivosValidos()), "el acorazado sí lo alcanza (dist 4, rango 6)");
+        assertEquals(Set.of(10), ids(p.getObjetivosValidos()), "el acorazado sí lo alcanza (dist 4, rango 4)");
     }
 
     @Test
     void d04_visionCompartida_unBarcoVeYOtroDispara() {
-        // Acorazado J1 en (2,4) ve hasta 5. Crucero J1 en (2,6): rango 4, visión 3. Enemigo en (6,7): a 4 del crucero, que no lo ve
-        GestorPartida p = partida(mapa(), b(1, 'A', 1, 2, 4), b(2, 'C', 1, 2, 6), b(10, 'D', 2, 6, 7));
-        p.seleccionarBarco(2);
-        assertEquals(Set.of(10), ids(p.getObjetivosValidos()), "con la visión del acorazado, el crucero (rango 4) puede disparar");
+        // Acorazado J1 en (1,4) con habilidad tiene rango 6 y visión 5. Crucero J1 en (3,6): visión 4. Enemigo en (7,4): a 6 del acorazado
+        GestorPartida p = partida(mapa(), b(1, 'A', 1, 1, 4), b(2, 'C', 1, 3, 6), b(10, 'D', 2, 7, 4));
+        p.seleccionarBarco(1);
+        p.usarHabilidad();
+        assertEquals(Set.of(10), ids(p.getObjetivosValidos()), "con la visión del crucero, el acorazado con habilidad (rango 6) puede disparar");
     }
 
     @Test
@@ -200,10 +201,10 @@ class ReglasDeJuegoTest {
 
     @Test
     void h01_acorazadoConHabilidadDisparaARango8() {
-        GestorPartida p = partida(mapa(), b(1, 'A', 1, 0, 0), b(2, 'C', 1, 4, 0), b(10, 'D', 2, 7, 0));
-        // dist acorazado-enemigo = 7; lo ve el crucero (dist 3)
+        GestorPartida p = partida(mapa(), b(1, 'A', 1, 0, 0), b(2, 'C', 1, 3, 0), b(10, 'D', 2, 6, 0));
+        // dist acorazado-enemigo = 6; lo ve el crucero (dist 3)
         p.seleccionarBarco(1);
-        assertTrue(p.getObjetivosValidos().isEmpty(), "rango 6 no llega a 7");
+        assertTrue(p.getObjetivosValidos().isEmpty(), "rango 4 no llega a 6");
         p.usarHabilidad();
         assertEquals(Set.of(10), ids(p.getObjetivosValidos()));
     }
@@ -274,8 +275,8 @@ class ReglasDeJuegoTest {
 
     @Test
     void r01_elTiradorQuedaVisibleParaElRivalEnSuTurnoSiguienteYDespuesSeOculta() {
-        // Acorazado J1 en (0,1) dispara a destructor J2 en (5,1) (dist 5). El J2 no ve el acorazado (visión destructor 2)
-        GestorPartida p = partida(mapa(), b(1, 'A', 1, 0, 1), b(2, 'C', 1, 3, 1), b(10, 'D', 2, 6, 1));
+        // Acorazado J1 en (0,1) dispara a destructor J2 en (4,1) (dist 4). El J2 no ve el acorazado (visión destructor 2)
+        GestorPartida p = partida(mapa(), b(1, 'A', 1, 0, 1), b(2, 'C', 1, 3, 1), b(10, 'D', 2, 4, 1));
         p.seleccionarBarco(1);
         assertTrue(ids(p.getObjetivosValidos()).contains(10));
         p.disparar(10);
@@ -292,7 +293,8 @@ class ReglasDeJuegoTest {
     @Test
     void m01_choqueConEnemigoOcultoFrenaAntesYCobraSoloLosPasosHechos() {
         // Destructor J1 en (2,2) va hacia (4,0). El enemigo en (4,0) está oculto detrás de la isla de (3,1)
-        GestorPartida p = partida(mapa("I,3,1"), b(1, 'A', 1, 0, 9), b(4, 'D', 1, 2, 2), b(10, 'D', 2, 4, 0));
+        GestorPartida p = partida(mapa("I,3,1"), b(1, 'A', 1, 0, 9), b(2, 'C', 1, 0, 8), b(3, 'C', 1, 0, 7),
+                b(4, 'D', 1, 2, 2), b(10, 'D', 2, 4, 0));
         assertNull(enemigo(p, 10), "detrás de la isla");
         p.seleccionarBarco(4);
         p.agregarPaso(new Posicion(3, 2));
@@ -397,7 +399,7 @@ class ReglasDeJuegoTest {
 
     @Test
     void g01_elTiradorRevelado_seMantieneAlGuardarYCargar() {
-        GestorPartida p = partida(mapa(), b(1, 'A', 1, 0, 1), b(2, 'C', 1, 3, 1), b(10, 'D', 2, 6, 1));
+        GestorPartida p = partida(mapa(), b(1, 'A', 1, 0, 1), b(2, 'C', 1, 3, 1), b(10, 'D', 2, 4, 1));
         p.seleccionarBarco(1);
         p.disparar(10);
         p.terminarTurno();

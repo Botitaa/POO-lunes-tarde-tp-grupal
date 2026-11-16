@@ -100,12 +100,12 @@ Cada jugador tiene 6 barcos: **1 Acorazado, 2 Cruceros y 3 Destructores**.
 | --- | --- | --- | --- |
 | Vida | 3 | 5 | 8 |
 | Daño | 3 | 2 | 4 |
-| Rango de disparo | 2 | 4 | 6 |
-| Visión | 2 | 3 | 5 |
+| Rango de disparo | 2 | 3 | 4 |
+| Visión | 2 | 4 | 5 |
 | Máx. casillas por turno | 4 | 3 | 2 |
 | Costo por casilla | 1 | 2 | 3 |
 | Espera tras disparar | 0 | 0 | 1 turno |
-| Habilidad | Daño doble | Se repara 2 de vida | Rango 8 |
+| Habilidad | Daño doble | Se repara 2 de vida | Rango 6 |
 
 Las habilidades se usan una vez por turno, duran hasta el final del turno y después hay que esperar 3 turnos para volver a usarlas (si se usa en el turno 1, vuelve a estar disponible en el turno 4).
 

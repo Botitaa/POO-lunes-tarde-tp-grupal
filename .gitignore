@@ -21,3 +21,10 @@ bin/
 # Archivos de sistema operativo
 .DS_Store
 Thumbs.db
+
+# Datos que genera el juego al correr
+datos/
+*.log
+*.sav
+!tp-batalla-naval/docs/prueba-manual/partidas/*.sav
+*.sav.tmp

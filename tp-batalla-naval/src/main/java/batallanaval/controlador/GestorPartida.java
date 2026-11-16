@@ -108,7 +108,10 @@ public class GestorPartida implements Partida {
                 barco.estaHabilidadActiva(),
                 barco.getRangoDisparo(),
                 barco.getEstadisticas().vision(),
-                esPropio);
+                esPropio,
+                barco.getDanio(),
+                barco.getEstadisticas().costoMovimiento(),
+                barco.getEstadisticas().movimientoMaxPorTurno());
 
     }
 
@@ -136,7 +139,7 @@ public class GestorPartida implements Partida {
 
     private static String efectoHabilidad(Barco barco) {
         return switch (barco.getSimbolo()) {
-            case 'A' -> "rango 8 este turno";
+            case 'A' -> "rango 6 este turno";
             case 'C' -> "se reparó (vida " + barco.getVida() + "/" + barco.getVidaMaxima() + ")";
             case 'D' -> "daño doble este turno";
             default -> "activada";

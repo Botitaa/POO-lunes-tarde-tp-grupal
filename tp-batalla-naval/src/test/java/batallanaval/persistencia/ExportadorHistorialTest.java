@@ -31,7 +31,7 @@ class ExportadorHistorialTest {
     private HistorialPartida historialDePrueba() {
         HistorialPartida historial = new HistorialPartida();
         historial.registrar(new EventoPartida(1, 1, TipoEvento.MOVIMIENTO, "Crucero a (3,4)", FECHA));
-        historial.registrar(new EventoPartida(1, 2, TipoEvento.HABILIDAD, "Acorazado rango 8", FECHA));
+        historial.registrar(new EventoPartida(1, 2, TipoEvento.HABILIDAD, "Acorazado rango 6", FECHA));
         historial.registrar(new EventoPartida(2, 2, TipoEvento.DISPARO, "Acorazado (7,4) -> Crucero (3,4), -4", FECHA));
         return historial;
     }

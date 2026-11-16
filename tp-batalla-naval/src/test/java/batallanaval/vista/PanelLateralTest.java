@@ -79,7 +79,7 @@ class PanelLateralTest {
 
     @Test
     void conBarcoSeleccionadoMuestraSuFicha() {
-        partida.seleccionado = new EstadoBarco(3, 1, 'A', ORIGEN, 6, 8, 2, 1, 2, false, 6, 5, true);
+        partida.seleccionado = new EstadoBarco(3, 1, 'A', ORIGEN, 6, 8, 2, 1, 2, false, 4, 5, true, 4, 3, 2);
 
         PanelLateral panel = crearPanel();
 
@@ -88,7 +88,7 @@ class PanelLateralTest {
         assertEquals("Casillas restantes: 2", texto(panel, "etiquetaCasillas"));
         assertEquals("Disparo: recargando (1 turno)", texto(panel, "etiquetaCooldownDisparo"));
         assertEquals("Habilidad: en espera (2 turnos)", texto(panel, "etiquetaHabilidad"));
-        assertTrue(texto(panel, "textoQueHaceHabilidad").startsWith("Acorazado: su rango de disparo sube a 8"),
+        assertTrue(texto(panel, "textoQueHaceHabilidad").startsWith("Acorazado: su rango de disparo sube a 6"),
                 "el cuadro explica qué hace la habilidad del barco elegido");
     }
 
@@ -116,11 +116,11 @@ class PanelLateralTest {
         PanelLateral panel = crearPanel();
         assertTrue(boton(panel, "Usar habilidad").isEnabled(), "disponible: se puede tocar");
 
-        partida.seleccionado = new EstadoBarco(2, 1, 'C', ORIGEN, 5, 5, 3, 0, 3, false, 4, 3, true);
+        partida.seleccionado = new EstadoBarco(2, 1, 'C', ORIGEN, 5, 5, 3, 0, 3, false, 3, 4, true, 2, 2, 3);
         panel.refrescarTodo();
         assertFalse(boton(panel, "Usar habilidad").isEnabled(), "en espera: deshabilitado");
 
-        partida.seleccionado = new EstadoBarco(2, 1, 'D', ORIGEN, 3, 3, 4, 0, 0, true, 2, 2, true);
+        partida.seleccionado = new EstadoBarco(2, 1, 'D', ORIGEN, 3, 3, 4, 0, 0, true, 2, 2, true, 6, 1, 4);
         panel.refrescarTodo();
         assertFalse(boton(panel, "Usar habilidad").isEnabled(), "ya activa este turno: deshabilitado");
         assertEquals("Habilidad: activa este turno", texto(panel, "etiquetaHabilidad"));

@@ -98,16 +98,16 @@ class BarcoTest {
     @Test
     void testHabilidadAcorazadoRangoExtendido() {
         Acorazado acorazado = new Acorazado(1);
-        assertEquals(6, acorazado.getRangoDisparo());
+        assertEquals(4, acorazado.getRangoDisparo());
 
         acorazado.usarHabilidad();
         assertTrue(acorazado.estaHabilidadActiva());
-        assertEquals(8, acorazado.getRangoDisparo());
+        assertEquals(6, acorazado.getRangoDisparo());
 
         // Al terminar el turno vuelve al rango base
         acorazado.reiniciarTurno();
         assertFalse(acorazado.estaHabilidadActiva());
-        assertEquals(6, acorazado.getRangoDisparo());
+        assertEquals(4, acorazado.getRangoDisparo());
     }
 
     @Test

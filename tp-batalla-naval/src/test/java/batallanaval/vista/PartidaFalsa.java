@@ -57,12 +57,12 @@ class PartidaFalsa implements Partida {
 
     /** Barco propio de ejemplo: un crucero sano con la habilidad disponible. */
     static EstadoBarco crucero(int id, Posicion posicion) {
-        return new EstadoBarco(id, 1, 'C', posicion, 5, 5, 3, 0, 0, false, 4, 3, true);
+        return new EstadoBarco(id, 1, 'C', posicion, 5, 5, 3, 0, 0, false, 3, 4, true, 2, 2, 3);
     }
 
     /** Barco enemigo de ejemplo: un destructor con la vida que se pida. */
     static EstadoBarco destructorEnemigo(int id, Posicion posicion, int vida) {
-        return new EstadoBarco(id, 2, 'D', posicion, vida, 3, 4, 0, 0, false, 2, 2, false);
+        return new EstadoBarco(id, 2, 'D', posicion, vida, 3, 4, 0, 0, false, 2, 2, false, 3, 1, 4);
     }
 
     private void aplicar(Runnable cambio) {
