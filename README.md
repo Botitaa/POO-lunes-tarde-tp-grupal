@@ -10,40 +10,30 @@ Trabajo práctico grupal: un juego de batalla naval por turnos para dos jugadore
 
 | | Integrante | Legajo | GitHub | Rol en el TP |
 | --- | --- | --- | --- | --- |
-| {foto de Agustín} | **Agustín Botana** | 1188651 | [@Botitaa](https://github.com/Botitaa) | Partida y reglas (`GestorPartida`), organización del repo y de Git |
-| {foto de Marcos} | **Marcos Enevoldsen** | 1221035 | [@enevoldsenmar](https://github.com/enevoldsenmar) | Tablero, mapa, navegación y línea de visión; configuración y exportación del historial |
-| {foto de Santino} | **Santino Faccio** | 1210889 | [@Faccio7L](https://github.com/Faccio7L) | Barcos y combate, guardado de partidas, estadísticas y ranking, UML |
-| {foto de Bruno} | **Bruno Domínguez** | 1213265 | [@Bruno-Dominguez](https://github.com/Bruno-Dominguez) | Vista del tablero en Swing (dibujo, niebla, selección, atajos) e historial |
-| {foto de Guillermo} | **Guillermo Sap** | 1206958 | [@guillermosap111](https://github.com/guillermosap111) | Pantallas y flujo del juego en Swing (menús, despliegue, guardado, fin de partida) |
+| <img src="docs/integrantes/agustin.jpg" width="72" alt="Agustín Botana" /> | **Agustín Botana** | 1188651 | [@Botitaa](https://github.com/Botitaa) | Partida y reglas (`GestorPartida`), organización del repo y de Git |
+| <img src="docs/integrantes/marcos.jpg" width="72" alt="Marcos Enevoldsen" /> | **Marcos Enevoldsen** | 1221035 | [@enevoldsenmar](https://github.com/enevoldsenmar) | Tablero, mapa, navegación y línea de visión; configuración y exportación del historial |
+| <img src="docs/integrantes/santi.jpg" width="72" alt="Santino Faccio" /> | **Santino Faccio** | 1210889 | [@Faccio7L](https://github.com/Faccio7L) | Barcos y combate, guardado de partidas, estadísticas y ranking, UML |
+| <img src="docs/integrantes/bruno.jpg" width="72" alt="Bruno Domínguez" /> | **Bruno Domínguez** | 1213265 | [@Bruno-Dominguez](https://github.com/Bruno-Dominguez) | Vista del tablero en Swing (dibujo, niebla, selección, atajos) e historial |
+| <img src="docs/integrantes/guille.jpg" width="72" alt="Guillermo Sap" /> | **Guillermo Sap** | 1206958 | [@guillermosap111](https://github.com/guillermosap111) | Pantallas y flujo del juego en Swing (menús, despliegue, guardado, fin de partida) |
 
 ### Agustín Botana
-
-{foto de Agustín}
 
 Tengo 20 años, soy de Ezeiza y estudio segundo año de Ingeniería Informática. Me entusiasma aprender buenas prácticas y cómo desarrollar buen software. Me gusta programar videojuegos en mi tiempo libre. Durante este cuatrimestre me gustaría descubrir si Java es tan difícil como dicen; además, me interesan los desafíos difíciles.
 
 ### Marcos Enevoldsen
 
-{foto de Marcos}
-
 Tengo 20 años, soy de Bariloche y estudio Ingeniería Informática en UADE. Me gustaría especializarme en ciberseguridad. Hincha y socio de River, soy instructor de esquí y me gustaría adquirir conocimientos y experiencia en Java.
 
 ### Santino Faccio
-
-{foto de Santino}
 
 Tengo 19 años, soy de Pinamar. Soy estudiante de la Licenciatura en Sistemas en UADE. Busco desarrollarme profesionalmente como desarrollador backend y/o analista funcional. Me gusta mucho el fútbol y soy socio del Club Atlético Independiente.
 Mi stack técnico: Python, Java, HTML, CSS, JavaScript y SQL.
 
 ### Bruno Domínguez
 
-{foto de Bruno}
-
 Tengo 22 años, soy de Cañuelas y estudio la Licenciatura en Gestión de Tecnología de la Información. Me gusta todo lo que tenga que ver con la creación de videojuegos y el desarrollo de personajes. Sé usar HTML, CSS y Python.
 
 ### Guillermo Sap
-
-{foto de Guillermo}
 
 Tengo 20 años, soy de Entre Ríos, vivo en CABA y estudio Ingeniería Informática en UADE. Mi objetivo es crear una marca que provea soluciones de software. Tengo conocimientos básicos de bases de datos SQL y NoSQL.
 
@@ -100,12 +90,12 @@ Cada jugador tiene 6 barcos: **1 Acorazado, 2 Cruceros y 3 Destructores**.
 | --- | --- | --- | --- |
 | Vida | 3 | 5 | 8 |
 | Daño | 3 | 2 | 4 |
-| Rango de disparo | 2 | 4 | 6 |
-| Visión | 2 | 3 | 5 |
+| Rango de disparo | 2 | 3 | 4 |
+| Visión | 2 | 4 | 5 |
 | Máx. casillas por turno | 4 | 3 | 2 |
 | Costo por casilla | 1 | 2 | 3 |
 | Espera tras disparar | 0 | 0 | 1 turno |
-| Habilidad | Daño doble | Se repara 2 de vida | Rango 8 |
+| Habilidad | Daño doble | Se repara 2 de vida | Rango 6 |
 
 Las habilidades se usan una vez por turno, duran hasta el final del turno y después hay que esperar 3 turnos para volver a usarlas (si se usa en el turno 1, vuelve a estar disponible en el turno 4).
 

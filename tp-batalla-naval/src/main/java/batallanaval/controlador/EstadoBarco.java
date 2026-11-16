@@ -6,5 +6,6 @@ public record EstadoBarco(int id, int numeroJugador, char simbolo, Posicion posi
                           int vida, int vidaMaxima, int casillasRestantes,
                           int cooldownDisparo, int cooldownHabilidad,
                           boolean habilidadActiva, int rangoDisparo, int vision,
-                          boolean esPropio){
+                          boolean esPropio, int danio, int costoMovimiento,
+                          int movimientoMaxPorTurno) {
 }

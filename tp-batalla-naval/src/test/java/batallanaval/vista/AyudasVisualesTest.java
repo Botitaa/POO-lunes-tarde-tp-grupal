@@ -27,7 +27,7 @@ class AyudasVisualesTest {
 
     @Test
     void descripcionDeCadaHabilidad() {
-        assertTrue(PanelTablero.descripcionHabilidad('A').contains("8"));
+        assertTrue(PanelTablero.descripcionHabilidad('A').contains("6"));
         assertTrue(PanelTablero.descripcionHabilidad('C').contains("repara"));
         assertTrue(PanelTablero.descripcionHabilidad('D').contains("doble"));
     }

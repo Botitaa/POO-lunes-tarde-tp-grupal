@@ -929,16 +929,32 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
 
     /**
      * Arma el texto del tooltip en HTML (Swing lo acepta para poder usar varias líneas).
-     * De los barcos enemigos no se muestran los cooldowns (decisión de diseño: es información del rival).
+     * De los barcos enemigos no se muestran los cooldowns ni las casillas restantes del turno
+     * (decisión de diseño: es información del rival).
      */
     private String armarTextoTooltip(EstadoBarco barco) {
         String texto = "<html><b>" + nombreTipo(barco.simbolo()) + "</b>";
         if (!barco.esPropio()) {
             texto += " (enemigo)";
         }
-        texto += "<br>Vida: " + barco.vida() + " / " + barco.vidaMaxima();
+        if (barco.posicion() != null) {
+            texto += " " + barco.posicion();
+        }
+        texto += "<br>Vida: " + barco.vida() + " / " + barco.vidaMaxima()
+                + " · Daño: " + barco.danio();
         texto += "<br>Rango de disparo: " + barco.rangoDisparo() + " · Visión: " + barco.vision();
-        texto += "<br><b>Habilidad:</b> " + descripcionHabilidad(barco.simbolo());
+        String unidadCosto = barco.costoMovimiento() == 1 ? "pto/casilla" : "ptos/casilla";
+        if (barco.esPropio()) {
+            texto += "<br>Costo de movimiento: " + barco.costoMovimiento() + " " + unidadCosto
+                    + " · Casillas este turno: " + barco.casillasRestantes() + " / " + barco.movimientoMaxPorTurno();
+        } else {
+            texto += "<br>Costo de movimiento: " + barco.costoMovimiento() + " " + unidadCosto
+                    + " · Movimiento máx.: " + barco.movimientoMaxPorTurno() + " casillas/turno";
+        }
+        if (barco.simbolo() == 'A') {
+            texto += "<br>Cadencia: 1 turno de espera después de disparar";
+        }
+        texto += "<br><b>Habilidad:</b> " + descripcionHabilidad(barco.simbolo()) + " (espera: 3 turnos)";
         if (barco.esPropio()) {
             texto += "<br>" + estadoHabilidad(barco);
             if (barco.cooldownDisparo() > 0) {
@@ -952,7 +968,7 @@ public class PanelTablero extends JPanel implements MouseListener, MouseMotionLi
     static String descripcionHabilidad(char simbolo) {
         switch (simbolo) {
             case 'A':
-                return "su rango de disparo sube a 8 en este turno.";
+                return "su rango de disparo sube a 6 en este turno.";
             case 'C':
                 return "se repara 2 de vida.";
             case 'D':

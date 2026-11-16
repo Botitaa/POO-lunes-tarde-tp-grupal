@@ -37,12 +37,12 @@ Los barcos bloquean el paso, pero no la visión ni los disparos. Las distancias 
 | --- | --- | --- | --- |
 | Vida | 3 | 5 | 8 |
 | Daño | 3 | 2 | 4 |
-| Rango de disparo | 2 | 4 | 6 |
-| Visión | 2 | 3 | 5 |
+| Rango de disparo | 2 | 3 | 4 |
+| Visión | 2 | 4 | 5 |
 | Máx. casillas por turno | 4 | 3 | 2 |
 | Costo por casilla | 1 | 2 | 3 |
 | Espera tras disparar | 0 | 0 | 1 turno |
-| Habilidad | Daño doble (6) | Se repara 2 de vida | Rango 8 |
+| Habilidad | Daño doble (6) | Se repara 2 de vida | Rango 6 |
 
 **Habilidades.** Se activan con el botón **Usar habilidad**, una vez por turno. No cuestan puntos, no impiden moverse y duran hasta el fin del turno. Después hay que esperar 3 turnos para volver a usarlas (si la usás en tu turno 1, vuelve a estar disponible en tu turno 4). Activala **antes** de disparar si querés que afecte al disparo.
 

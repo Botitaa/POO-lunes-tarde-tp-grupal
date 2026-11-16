@@ -63,8 +63,8 @@ Cada paso dice qué hacer y qué tiene que pasar. Marcá la casilla si pasó. Si
       **Tiene que pasar:** el Acorazado enemigo de `(7,4)` se ve (lo ve tu Acorazado, que tiene visión 5). Las filas 8 y 9 están con niebla.
 - [ ] **Hacé:** seleccioná el Destructor de `(2,5)`.
       **Tiene que pasar:** el combo de objetivos y el botón **Disparar** están deshabilitados: el enemigo está a distancia 5 y el rango del Destructor es 2. Ningún barco enemigo tiene borde rojo.
-- [ ] **Hacé:** seleccioná el Acorazado de `(2,4)`.
-      **Tiene que pasar:** el Acorazado enemigo aparece en la lista y con borde rojo (visión compartida: el rango del Acorazado es 6).
+- [ ] **Hacé:** seleccioná el Acorazado de `(2,4)` y tocá **Usar habilidad**.
+      **Tiene que pasar:** el Acorazado enemigo aparece en la lista y con borde rojo (el rango del Acorazado sube de 4 a 6).
 - [ ] **Hacé:** **Disparar**.
       **Tiene que pasar:** el enemigo pasa de `A8` a `A4` y hay un destello en su casilla. El Acorazado de Ana ya no puede moverse ni volver a disparar en este turno.
 

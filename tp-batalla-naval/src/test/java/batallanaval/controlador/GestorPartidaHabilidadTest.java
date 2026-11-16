@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests de habilidades en GestorPartida (PAR-11, #56): destructor daño doble, crucero se repara 2,
- * acorazado rango 8; una vez, espera de 3 turnos, dura hasta el fin del turno, no cuesta puntos.
+ * acorazado rango 6; una vez, espera de 3 turnos, dura hasta el fin del turno, no cuesta puntos.
  * <p>
  * Siempre juega Ana (J1). Flota base de Ana en la fila 1: acorazado 1 en (1,0), cruceros 2 y 3 en (1,1)
  * y (1,2), destructores 4, 5 y 6 en (1,3), (1,4) y (1,5). La de Beto (ids 7 a 12) en la fila 9.
@@ -261,13 +261,13 @@ class GestorPartidaHabilidadTest {
         assertEquals(5, datosDe(partida, 2).vida());
     }
 
-    /** Crucero 8 de Beto en (8,0), a 7 del acorazado de Ana; lo ve el destructor 4 de Ana, puesto en (6,0). */
+    /** Crucero 8 de Beto en (6,0), a 5 del acorazado de Ana (lo ve con su visión 5, pero su tiro base es 4). */
     private static GestorPartida partidaConObjetivoLejano() {
-        return partida(con(sano(4, 'D', 1, 6, 0), sano(8, 'C', 2, 8, 0)));
+        return partida(con(sano(8, 'C', 2, 6, 0)));
     }
 
     @Test
-    void sinHabilidadElAcorazadoNoLlegaASiete() {
+    void sinHabilidadElAcorazadoNoLlegaACinco() {
         GestorPartida partida = partidaConObjetivoLejano();
         partida.seleccionarBarco(1);
 
@@ -275,7 +275,7 @@ class GestorPartidaHabilidadTest {
     }
 
     @Test
-    void conHabilidadElAcorazadoTiraARangoOcho() {
+    void conHabilidadElAcorazadoTiraARangoSeis() {
         GestorPartida partida = partidaConObjetivoLejano();
         partida.seleccionarBarco(1);
         partida.usarHabilidad();
@@ -286,15 +286,15 @@ class GestorPartidaHabilidadTest {
     }
 
     @Test
-    void elRangoDelAcorazadoVuelveASeisEnElTurnoSiguiente() {
+    void elRangoDelAcorazadoVuelveACuatroEnElTurnoSiguiente() {
         GestorPartida partida = partidaConObjetivoLejano();
         partida.seleccionarBarco(1);
         partida.usarHabilidad();
-        assertEquals(8, partida.getBarcoSeleccionado().rangoDisparo());
+        assertEquals(6, partida.getBarcoSeleccionado().rangoDisparo());
 
         pasarRonda(partida);
         partida.seleccionarBarco(1);
 
-        assertEquals(6, partida.getBarcoSeleccionado().rangoDisparo());
+        assertEquals(4, partida.getBarcoSeleccionado().rangoDisparo());
     }
 }
